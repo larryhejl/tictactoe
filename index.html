@@ -235,8 +235,10 @@
           }
 
           makeMove(index, PLAYER);
+          updateView();
           var result = getResult(board);
           if (finishIfDone(result)) {
+            updateView();
             return;
           }
 
