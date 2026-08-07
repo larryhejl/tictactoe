@@ -1572,6 +1572,7 @@
           var figure = document.createElement('pre');
           figure.className = 'hangman-figure';
           figure.setAttribute('aria-label', 'Hangman figure');
+          figure.setAttribute('aria-live', 'polite');
           boardElement.appendChild(figure);
 
           var word = document.createElement('div');
@@ -1619,6 +1620,9 @@
             }
             return word.length >= 9 || complex;
           });
+          if (!words.length) {
+            words = HANGMAN_WORDS;
+          }
           return words[Math.floor(Math.random() * words.length)];
         }
 
@@ -1694,7 +1698,7 @@
             ' +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=======',
             ' +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n======='
           ];
-          return figures[wrongGuesses];
+          return figures[Math.min(wrongGuesses, figures.length - 1)];
         }
 
         function resetCurrentGame() {
