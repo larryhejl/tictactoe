@@ -231,6 +231,54 @@
         position: absolute;
       }
 
+      .hangman-board {
+        display: grid;
+        gap: 18px;
+        text-align: center;
+      }
+
+      .hangman-figure {
+        margin: 0;
+        padding: 10px;
+        border: 1px solid #ced7e0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #1d4ed8;
+        font: 700 1.1rem/1.15 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .hangman-word {
+        min-height: 2.2rem;
+        font: 700 clamp(1.35rem, 6vw, 2rem)/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.2em;
+        overflow-wrap: anywhere;
+      }
+
+      .hangman-guesses {
+        margin: 0;
+        color: #4b5563;
+      }
+
+      .hangman-letter-buttons {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 7px;
+      }
+
+      .hangman-letter {
+        min-height: 40px;
+        padding: 6px;
+        font-weight: 700;
+      }
+
+      .hangman-letter.correct {
+        background: #d8f6dc;
+      }
+
+      .hangman-letter.incorrect {
+        background: #ffe4e6;
+      }
+
       @media (max-width: 480px) {
         .game {
           padding: 16px;
@@ -249,11 +297,12 @@
             <option value="tictactoe">Tic-Tac-Toe</option>
             <option value="checkers" selected>Checkers</option>
             <option value="chess">Chess</option>
+            <option value="hangman">Hangman</option>
           </select>
         </label>
         <label for="difficulty">
           Difficulty
-          <select id="difficulty" aria-label="Select computer difficulty">
+          <select id="difficulty" aria-label="Select difficulty">
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
@@ -319,6 +368,14 @@
         var selectedChessSquare = -1;
         var validChessMoves = [];
         var chessInCheckSide = '';
+        var HANGMAN_MAX_WRONG_GUESSES = 6;
+        var HANGMAN_WORDS = (
+          'apple angle baker beach bird book bread brush cabin candle captain carpet castle chair cheese cherry cloud coffee cookie coral cotton cricket crown dancer desert doctor dragon eagle earth engine family farmer feather flower forest garden garlic guitar hammer harbor helmet honey horse island jacket jungle kitten ladder lemon library market meadow mirror monkey mountain mushroom noodle ocean orange panda peanut pencil pepper picnic pirate planet pocket potato puzzle rabbit rainbow river rocket sailor school shadow silver singer spider spring square strawberry summer sunset tablet teacher thunder tiger tomato tunnel turtle valley violin winter window yellow zebra acorn actor alarm album amber anchor ankle arcade artist autumn avocado balloon banana barrel basket beacon beetle bicycle blanket blossom bottle button camera canyon carrot celery circle circus closet clover coaster comet copper cousin cushion daisy dentist dolphin donkey drawer driver engine fabric falcon fence finger firefly fisher flute fossil freedom furnace galaxy garage ginger giraffe glove golden granite grape guitar hammock harbor hazel hiking hockey horizon hotel hunter igloo insect ivory kettle kingdom lantern laptop laser leather legend lizard lobster magnet maple marble medal melon message meteor mitten mobile model mortar music nectar nickel night nutmeg office olive onion orchid oyster palace parrot pastry peach pebble pepper phoenix pickle pillow planet plastic plum poet popcorn powder prairie prism pumpkin quartz queen quilt radar ranger raven recipe ribbon robot roller rubber saddle safari sandwich satellite sausage scarlet school scooter secret shadow sheriff shirt shore signal skillet soccer soldier sparrow spice spiral sponge stable stadium station statue storm story subway sugar summit surfer sweater symbol temple tennis thunder ticket timber toaster tractor travel trumpet tunnel turkey velvet village volcano wagon wallet walnut warrior waterfall weather whistle willow wizard yogurt zephyr airport algebra almond alphabet antenna apartment apron aquarium archive athlete atlas attic bakery balcony bamboo banker beacon beauty beaver bedroom biscuit blossom border bottle bracelet branch bridge broccoli browser bubble bucket bulletin butter canyon captain cartoon ceiling cereal chamber charcoal chicken chimney circle climate college comfort concert copper costume country crystal culture currency cyclone database decimal dentist diamond dinosaur display dolphin drawer eclipse economy elastic electric elevator emerald emperor energy example factory fantasy feather festival fiction filter fireplace fishing florist fortune fossil fountain freezer gallery gasoline general glacier grammar grocery habitat handbag harvest helmet history holiday hospital iceberg income indoor industry island jacket journey justice kitchen lantern leather leisure library luggage machine magazine mansion market mattress medicine melody memory message mineral miracle mixture monitor morning museum music mystery nation nature noodle notebook number object office olive opera orchard package palace paper parade parent partner passion pattern payment peanut pencil perfume picture pillow pioneer planet plastic player pocket poetry polygon popcorn portrait potato powder present printer problem project pumpkin purpose puzzle quality question quilt rabbit railway rainbow recipe record reef remote repair repeat report result ribbon rocket routine rubber safari sailor salary sandwich school science scooter screen season secret shadow shelter signal silver singer sister skill soccer source space speaker spiral sponge spring square stadium statue storage story street summer sunrise sunset supply survey sweater symbol system tablet target teacher temple theory thunder ticket timber tissue toaster topic tower tractor travel treasure tunnel turkey umbrella uniform universe valley vehicle velvet village violin volcano wallet warrior weather website weekend welcome whisper willow winter woman wooden worker writer yellow zebra ability absent accident account action active address advance advice airport alarm algebra alcohol allergy alphabet ancient angel animal answer anxiety apology appeal approve argument army arrival artist aspect athlete attack autumn average awkward balance balloon bamboo banana bargain barrel basket battle beacon beauty become before believe belong benefit bicycle binary biology biscuit blanket border bottle bottom branch bridge bright broccoli browser bucket button cabin camera cancel candle canyon captain carbon career carpet cartoon castle caution ceiling celery center century chamber change cheese cherry chicken choose circle citizen climate clock closet cloud coach coastal coffee collect college comedy comfort common concert conduct connect cotton country courage cousin create cricket culture custom danger decimal decide decline decorate degree demand dentist depend describe desert design detail develop diamond dinner direct discover disease display distance doctor dolphin donate double dragon drawer dream driver durable dynamic eagle early earth economy educate effect effort either elastic elder electric element elevator emerge emotion empire employ enable energy engine enjoy enough equal escape estate ethics event example excite excuse expand expert fabric factor failed fairly falcon family famous fancy farmer fashion father feather feature festival fiction field figure filter finance finger finish fishing flight flower folder follow forest fortune fossil fountain freedom freezer friend frontier furnace future galaxy garage garlic gather gentle ginger giraffe glacier global golden grammar grape graphic gravity grocery growth guitar hammer happen harbor harvest helmet hidden hiking history hockey holiday honest honey horizon hospital hotel hunter ideal image impact improve income index indoor inform insect install interest invite island jacket jewel journey jungle junior kettle kingdom kitchen kitten ladder language lantern laptop laser later launch leader leather legend lesson letter library lizard local locate locker lobster lottery luggage luxury machine magnet major manage manner maple marble market master matter meadow measure medal medium melody memory mention menu merchant meteor method middle mineral minute mirror mobile modern monkey moral morning mother motion mountain mushroom music narrow nation nature nearby nectar needle nervous normal notice number object ocean offer office online opinion orange orchard order organ origin output oxygen package palace panda parent parrot party pattern payment peanut people pepper perfect person phrase picnic picture pillow pioneer pirate planet plastic player pocket poet poetry police pollen popular portrait potato powder praise prefer prepare present printer private problem process produce program project promise protect public puzzle quality quarter question quiet rabbit railway random ranger rapid rather recipe record reduce reflect region relate remote repeat report result ribbon rocket routine rubber sailor salary sample school science screen search season secret select sentence shadow shelter signal silver simple singer sister skill soccer source speaker spiral sponge spring square stable stadium statue storage story street strong student subject subway summer sunrise sunset supply survey sweater symbol system tablet talent target teacher temple theory thunder ticket timber tissue toaster topic tower tractor travel treasure tunnel turkey umbrella uniform universe valley vehicle velvet village violin volcano wallet warrior weather website weekend welcome whisper willow winter wooden worker writer yellow zebra absolute abstract academic accepted accident accurate activity addition adequate adjacent advanced adventure alphabet ancient anxiety apartment apparent approach argument arithmetic arrival artistic athlete attention attractive audience autumn average backward balcony bamboo because bedroom benefit bicycle blanket blossom boundary bracelet browser building business calendar capable careful category ceiling ceremony champion charity chemical chimney citizen climate clothing cluster comfort command comment company complex concert conduct confirm connect console content contest country courage creation cricket culture current cushion database decimal declare decline decorate defense density dentist describe design desktop detail develop diamond disaster discover disease display distant dolphin domestic dramatic drawing dynamic eclipse economy educate effect elegant element elevator emotion emperor enable energy engine enhance enough equality escape estate event example explore express factory fantasy feature festival fiction filter fishing foreign fortune freedom frontier furnace galaxy general glacier grammar graphic grocery habitat harbor harvest heading healthy helmet history holiday horizon hospital housing hunter identify image impact improve include index indoor industry inform insect install interest journey justice kitchen language lantern leather leisure library locate logical luggage machine manager market material meadow measure medical melody mention method mineral miracle mixture monitor morning mountain museum mystery natural nearby nervous network notebook notice nuclear object observe office online opinion orchard organic origin outcome package palace parent partial partner passage pattern payment peanut people percent perfect picture pioneer plastic player pocket poetry popular portrait potato powder practice praise predict present primary printer private problem process produce program project promise protect purpose puzzle quality quarter question rabbit railway random ranger reality receive record recover reflect regular related remote repeat report require rescue result ribbon rocket routine salary sample school science screen search season secret select serious shadow shelter signal similar simple singer social source special speaker spiral sponge spring square stable stadium statue storage story street student subject subway sudden summer sunrise supply survey sweater symbol system talent target teacher temple theory thorough thunder ticket timber tissue toaster topic tower tractor travel treasure tunnel turkey ultimate umbrella uniform unique universe valley vehicle velvet village virtual violin volcano wallet warrior weather website welcome western whisper willow winter wooden worker writer yellow zebra'
+        ).split(' ');
+        var hangmanWord = '';
+        var hangmanGuesses = [];
+        var hangmanWrongGuesses = 0;
+        var hangmanGameOver = false;
 
         function createTicTacToeBoardButtons() {
           boardElement.innerHTML = '';
