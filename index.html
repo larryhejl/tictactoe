@@ -1563,11 +1563,147 @@
           });
         }
 
+        function createHangmanBoardButtons() {
+          boardElement.innerHTML = '';
+          boardElement.className = 'board hangman-board';
+          boardElement.setAttribute('role', 'group');
+          boardElement.setAttribute('aria-label', 'Hangman game');
+
+          var figure = document.createElement('pre');
+          figure.className = 'hangman-figure';
+          figure.setAttribute('aria-label', 'Hangman figure');
+          boardElement.appendChild(figure);
+
+          var word = document.createElement('div');
+          word.className = 'hangman-word';
+          word.setAttribute('aria-label', 'Word to guess');
+          boardElement.appendChild(word);
+
+          var guesses = document.createElement('p');
+          guesses.className = 'hangman-guesses';
+          boardElement.appendChild(guesses);
+
+          var letters = document.createElement('div');
+          letters.className = 'hangman-letter-buttons';
+          letters.setAttribute('aria-label', 'Choose a letter');
+          for (var i = 0; i < 26; i += 1) {
+            var letter = String.fromCharCode(65 + i);
+            var letterButton = document.createElement('button');
+            letterButton.type = 'button';
+            letterButton.className = 'hangman-letter';
+            letterButton.textContent = letter;
+            letterButton.dataset.letter = letter.toLowerCase();
+            letterButton.addEventListener('click', onHangmanLetterClick);
+            letters.appendChild(letterButton);
+          }
+          boardElement.appendChild(letters);
+        }
+
+        function resetHangmanGame() {
+          hangmanWord = getHangmanWord();
+          hangmanGuesses = [];
+          hangmanWrongGuesses = 0;
+          hangmanGameOver = false;
+          updateHangmanView();
+        }
+
+        function getHangmanWord() {
+          var difficulty = difficultySelect.value;
+          var words = HANGMAN_WORDS.filter(function (word) {
+            var complex = isHangmanWordComplex(word);
+            if (difficulty === 'easy') {
+              return word.length <= 5 && !complex;
+            }
+            if (difficulty === 'medium') {
+              return word.length >= 6 && word.length <= 8 && !complex;
+            }
+            return word.length >= 9 || complex;
+          });
+          return words[Math.floor(Math.random() * words.length)];
+        }
+
+        function isHangmanWordComplex(word) {
+          return /[jqxz]|(.)\1|tion|sion|ough|eau/.test(word);
+        }
+
+        function onHangmanLetterClick(event) {
+          if (currentGame !== 'hangman' || hangmanGameOver) {
+            return;
+          }
+          makeHangmanGuess(event.currentTarget.dataset.letter);
+        }
+
+        function makeHangmanGuess(letter) {
+          if (hangmanGuesses.indexOf(letter) !== -1) {
+            return;
+          }
+          hangmanGuesses.push(letter);
+          if (hangmanWord.indexOf(letter) === -1) {
+            hangmanWrongGuesses += 1;
+          }
+
+          var hasGuessedWord = hangmanWord.split('').every(function (character) {
+            return hangmanGuesses.indexOf(character) !== -1;
+          });
+          if (hasGuessedWord || hangmanWrongGuesses >= HANGMAN_MAX_WRONG_GUESSES) {
+            hangmanGameOver = true;
+          }
+          updateHangmanView();
+        }
+
+        function updateHangmanView() {
+          var figure = boardElement.querySelector('.hangman-figure');
+          var wordElement = boardElement.querySelector('.hangman-word');
+          var guessesElement = boardElement.querySelector('.hangman-guesses');
+          var letterButtons = boardElement.querySelectorAll('.hangman-letter');
+          var displayWord = hangmanWord.split('').map(function (character) {
+            return hangmanGameOver || hangmanGuesses.indexOf(character) !== -1 ? character.toUpperCase() : '_';
+          }).join(' ');
+          var wrongLetters = hangmanGuesses.filter(function (letter) {
+            return hangmanWord.indexOf(letter) === -1;
+          });
+
+          figure.textContent = getHangmanFigure(hangmanWrongGuesses);
+          wordElement.textContent = displayWord;
+          guessesElement.textContent = 'Incorrect guesses: ' + (wrongLetters.length ? wrongLetters.join(', ').toUpperCase() : 'None');
+          for (var i = 0; i < letterButtons.length; i += 1) {
+            var button = letterButtons[i];
+            var letter = button.dataset.letter;
+            var guessed = hangmanGuesses.indexOf(letter) !== -1;
+            button.disabled = hangmanGameOver || guessed;
+            button.classList.toggle('correct', guessed && hangmanWord.indexOf(letter) !== -1);
+            button.classList.toggle('incorrect', guessed && hangmanWord.indexOf(letter) === -1);
+          }
+
+          if (hangmanGameOver && hangmanWrongGuesses >= HANGMAN_MAX_WRONG_GUESSES) {
+            statusElement.textContent = 'Out of guesses. The word was ' + hangmanWord.toUpperCase() + '.';
+          } else if (hangmanGameOver) {
+            statusElement.textContent = 'You win! The word was ' + hangmanWord.toUpperCase() + '.';
+          } else {
+            statusElement.textContent = 'Guess the word. ' + (HANGMAN_MAX_WRONG_GUESSES - hangmanWrongGuesses) + ' incorrect guesses remaining.';
+          }
+        }
+
+        function getHangmanFigure(wrongGuesses) {
+          var figures = [
+            ' +---+\n |   |\n     |\n     |\n     |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n     |\n     |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n |   |\n     |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n/|   |\n     |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n/|\\  |\n     |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=======',
+            ' +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n======='
+          ];
+          return figures[wrongGuesses];
+        }
+
         function resetCurrentGame() {
           if (currentGame === 'checkers') {
             resetCheckersGame();
           } else if (currentGame === 'chess') {
             resetChessGame();
+          } else if (currentGame === 'hangman') {
+            resetHangmanGame();
           } else {
             resetTicTacToeGame();
           }
@@ -1581,6 +1717,9 @@
           } else if (currentGame === 'chess') {
             titleElement.textContent = 'Chess';
             createChessBoardButtons();
+          } else if (currentGame === 'hangman') {
+            titleElement.textContent = 'Hangman';
+            createHangmanBoardButtons();
           } else {
             titleElement.textContent = 'Tic-Tac-Toe';
             createTicTacToeBoardButtons();
