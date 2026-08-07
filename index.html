@@ -1414,7 +1414,8 @@
           for (var i = 0; i < moves.length; i += 1) {
             var boardAfterMove = copyChessBoard(chessBoard);
             applyChessMoveToBoard(boardAfterMove, moves[i]);
-            var score = evaluateChessBoard(boardAfterMove) + scoreChessMove(chessBoard, moves[i], CHESS_COMPUTER);
+            var baseScore = evaluateChessBoard(boardAfterMove) + scoreChessMove(chessBoard, moves[i], CHESS_COMPUTER);
+            var score = baseScore;
             var playerReplies = getAllChessMoves(boardAfterMove, CHESS_PLAYER);
             if (playerReplies.length === 0) {
               score += isChessKingInCheck(boardAfterMove, CHESS_PLAYER) ? 10000 : 0;
@@ -1426,7 +1427,7 @@
                 var replyScore = evaluateChessBoard(replyBoard) - scoreChessMove(boardAfterMove, playerReplies[j], CHESS_PLAYER);
                 worstReplyScore = Math.min(worstReplyScore, replyScore);
               }
-              score = worstReplyScore;
+              score = baseScore + worstReplyScore;
             }
             if (score > bestScore) {
               bestScore = score;
