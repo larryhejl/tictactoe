@@ -1950,6 +1950,8 @@
             resetChessGame();
           } else if (currentGame === 'hangman') {
             resetHangmanGame();
+          } else if (currentGame === 'sudoku') {
+            resetSudokuGame();
           } else {
             resetTicTacToeGame();
           }
@@ -1966,6 +1968,9 @@
           } else if (currentGame === 'hangman') {
             titleElement.textContent = 'Hangman';
             createHangmanBoardButtons();
+          } else if (currentGame === 'sudoku') {
+            titleElement.textContent = 'Sudoku';
+            createSudokuBoardButtons();
           } else {
             titleElement.textContent = 'Tic-Tac-Toe';
             createTicTacToeBoardButtons();
