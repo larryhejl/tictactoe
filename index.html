@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tic-Tac-Toe</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #f4f7fb;
+        color: #1a1f36;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+
+      .game {
+        width: 100%;
+        max-width: 420px;
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        margin: 0 0 14px;
+        text-align: center;
+        font-size: 1.6rem;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+
+      .controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+      }
+
+      select,
+      button {
+        border: 1px solid #ced7e0;
+        border-radius: 8px;
+        background: #fff;
+        color: #1a1f36;
+        font-size: 0.95rem;
+        padding: 8px 10px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #f1f6ff;
+      }
+
+      .status {
+        min-height: 24px;
+        margin-bottom: 14px;
+        font-weight: 600;
+      }
+
+      .board {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .cell {
+        width: calc((100% - 16px) / 3);
+        aspect-ratio: 1 / 1;
+        border: 1px solid #ced7e0;
+        border-radius: 10px;
+        background: #fdfefe;
+        font-size: clamp(2rem, 7vw, 2.6rem);
+        font-weight: 700;
+        color: #1a1f36;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease, transform 0.08s ease;
+      }
+
+      .cell:active {
+        transform: scale(0.98);
+      }
+
+      .cell[disabled] {
+        cursor: default;
+      }
+
+      .cell.last-move {
+        background: #eef5ff;
+      }
+
+      .cell.win {
+        background: #d8f6dc;
+      }
+
+      @media (max-width: 480px) {
+        .game {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="game">
+      <h1>Tic-Tac-Toe</h1>
+
+      <div class="controls">
+        <label for="difficulty">
+          Difficulty
+          <select id="difficulty" aria-label="Select computer difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <button id="reset" type="button">Reset Game</button>
+      </div>
+
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <div id="board" class="board" role="grid" aria-label="Tic-Tac-Toe board"></div>
+    </main>
+
+    <script>
+      (function () {
+        var PLAYER = 'X';
+        var COMPUTER = 'O';
+        var WIN_LINES = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6]
+        ];
+
+        var boardElement = document.getElementById('board');
+        var statusElement = document.getElementById('status');
+        var resetButton = document.getElementById('reset');
+        var difficultySelect = document.getElementById('difficulty');
+
+        var board = Array(9).fill('');
+        var gameOver = false;
+        var turn = PLAYER;
+        var lastMove = -1;
+        var winningLine = null;
+
+        function createBoardButtons() {
+          boardElement.innerHTML = '';
+          for (var i = 0; i < 9; i += 1) {
+            var cellButton = document.createElement('button');
+            cellButton.type = 'button';
+            cellButton.className = 'cell';
+            cellButton.setAttribute('role', 'gridcell');
+            cellButton.setAttribute('aria-label', 'Cell ' + (i + 1));
+            cellButton.dataset.index = String(i);
+            cellButton.addEventListener('click', onCellClick);
+            boardElement.appendChild(cellButton);
+          }
+        }
+
+        function resetGame() {
+          board = Array(9).fill('');
+          gameOver = false;
+          turn = PLAYER;
+          lastMove = -1;
+          winningLine = null;
+          updateView();
+        }
+
+        function updateView() {
+          var cells = boardElement.children;
+          for (var i = 0; i < cells.length; i += 1) {
+            var cell = cells[i];
+            cell.textContent = board[i];
+            cell.disabled = gameOver || turn !== PLAYER || board[i] !== '';
+            cell.classList.remove('last-move');
+            cell.classList.remove('win');
+
+            if (i === lastMove) {
+              cell.classList.add('last-move');
+            }
+
+            if (winningLine && winningLine.indexOf(i) !== -1) {
+              cell.classList.add('win');
+            }
+          }
+
+          var result = getResult(board);
+          if (result.winner === PLAYER) {
+            statusElement.textContent = 'You win!';
+          } else if (result.winner === COMPUTER) {
+            statusElement.textContent = 'Computer wins!';
+          } else if (result.draw) {
+            statusElement.textContent = "It's a draw.";
+          } else if (turn === PLAYER) {
+            statusElement.textContent = 'Your turn (X).';
+          } else {
+            statusElement.textContent = 'Computer thinking...';
+          }
+        }
+
+        function onCellClick(event) {
+          if (gameOver || turn !== PLAYER) {
+            return;
+          }
+
+          var index = Number(event.currentTarget.dataset.index);
+          if (board[index] !== '') {
+            return;
+          }
+
+          makeMove(index, PLAYER);
+          var result = getResult(board);
+          if (finishIfDone(result)) {
+            return;
+          }
+
+          turn = COMPUTER;
+          updateView();
+
+          window.setTimeout(function () {
+            if (gameOver) {
+              return;
+            }
+            var aiIndex = getComputerMove();
+            if (aiIndex >= 0) {
+              makeMove(aiIndex, COMPUTER);
+            }
+            var aiResult = getResult(board);
+            finishIfDone(aiResult);
+            if (!gameOver) {
+              turn = PLAYER;
+            }
+            updateView();
+          }, 250);
+        }
+
+        function makeMove(index, mark) {
+          board[index] = mark;
+          lastMove = index;
+        }
+
+        function finishIfDone(result) {
+          if (result.winner || result.draw) {
+            gameOver = true;
+            winningLine = result.line;
+            return true;
+          }
+          return false;
+        }
+
+        function getResult(currentBoard) {
+          for (var i = 0; i < WIN_LINES.length; i += 1) {
+            var line = WIN_LINES[i];
+            var a = currentBoard[line[0]];
+            var b = currentBoard[line[1]];
+            var c = currentBoard[line[2]];
+            if (a && a === b && b === c) {
+              return { winner: a, draw: false, line: line };
+            }
+          }
+
+          if (currentBoard.every(function (cell) { return cell !== ''; })) {
+            return { winner: '', draw: true, line: null };
+          }
+
+          return { winner: '', draw: false, line: null };
+        }
+
+        function getAvailableMoves(currentBoard) {
+          var moves = [];
+          for (var i = 0; i < currentBoard.length; i += 1) {
+            if (currentBoard[i] === '') {
+              moves.push(i);
+            }
+          }
+          return moves;
+        }
+
+        function getRandomMove(currentBoard) {
+          var moves = getAvailableMoves(currentBoard);
+          if (moves.length === 0) {
+            return -1;
+          }
+          return moves[Math.floor(Math.random() * moves.length)];
+        }
+
+        function findLineMove(currentBoard, mark) {
+          for (var i = 0; i < WIN_LINES.length; i += 1) {
+            var line = WIN_LINES[i];
+            var values = [
+              currentBoard[line[0]],
+              currentBoard[line[1]],
+              currentBoard[line[2]]
+            ];
+            var markCount = values.filter(function (value) { return value === mark; }).length;
+            var emptyCount = values.filter(function (value) { return value === ''; }).length;
+            if (markCount === 2 && emptyCount === 1) {
+              var emptyIndexInLine = values.indexOf('');
+              return line[emptyIndexInLine];
+            }
+          }
+          return -1;
+        }
+
+        function getMediumMove(currentBoard) {
+          var winningMove = findLineMove(currentBoard, COMPUTER);
+          if (winningMove >= 0) {
+            return winningMove;
+          }
+
+          var blockingMove = findLineMove(currentBoard, PLAYER);
+          if (blockingMove >= 0) {
+            return blockingMove;
+          }
+
+          return getRandomMove(currentBoard);
+        }
+
+        function getHardMove(currentBoard) {
+          var bestScore = -Infinity;
+          var bestMove = -1;
+          var moves = getAvailableMoves(currentBoard);
+
+          for (var i = 0; i < moves.length; i += 1) {
+            var move = moves[i];
+            currentBoard[move] = COMPUTER;
+            var score = minimax(currentBoard, false);
+            currentBoard[move] = '';
+
+            if (score > bestScore) {
+              bestScore = score;
+              bestMove = move;
+            }
+          }
+
+          return bestMove;
+        }
+
+        function minimax(currentBoard, isMaximizing) {
+          var result = getResult(currentBoard);
+          if (result.winner === COMPUTER) {
+            return 10;
+          }
+          if (result.winner === PLAYER) {
+            return -10;
+          }
+          if (result.draw) {
+            return 0;
+          }
+
+          var moves = getAvailableMoves(currentBoard);
+
+          if (isMaximizing) {
+            var bestScore = -Infinity;
+            for (var i = 0; i < moves.length; i += 1) {
+              var move = moves[i];
+              currentBoard[move] = COMPUTER;
+              var score = minimax(currentBoard, false);
+              currentBoard[move] = '';
+              bestScore = Math.max(bestScore, score);
+            }
+            return bestScore;
+          }
+
+          var minScore = Infinity;
+          for (var j = 0; j < moves.length; j += 1) {
+            var playerMove = moves[j];
+            currentBoard[playerMove] = PLAYER;
+            var playerScore = minimax(currentBoard, true);
+            currentBoard[playerMove] = '';
+            minScore = Math.min(minScore, playerScore);
+          }
+          return minScore;
+        }
+
+        function getComputerMove() {
+          var difficulty = difficultySelect.value;
+          if (difficulty === 'easy') {
+            return getRandomMove(board.slice());
+          }
+          if (difficulty === 'medium') {
+            return getMediumMove(board.slice());
+          }
+          return getHardMove(board.slice());
+        }
+
+        resetButton.addEventListener('click', resetGame);
+        difficultySelect.addEventListener('change', resetGame);
+
+        createBoardButtons();
+        resetGame();
+      })();
+    </script>
+  </body>
+</html>
