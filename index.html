@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tic-Tac-Toe</title>
+    <title>Tic-Tac-Toe and Checkers</title>
     <style>
       :root {
         color-scheme: light;
@@ -27,7 +27,7 @@
 
       .game {
         width: 100%;
-        max-width: 420px;
+        max-width: 460px;
         background: #ffffff;
         border-radius: 14px;
         padding: 20px;
@@ -99,11 +99,13 @@
         transition: background-color 0.2s ease, transform 0.08s ease;
       }
 
-      .cell:active {
+      .cell:active,
+      .checker-square:active {
         transform: scale(0.98);
       }
 
-      .cell[disabled] {
+      .cell[disabled],
+      .checker-square[disabled] {
         cursor: default;
       }
 
@@ -115,6 +117,77 @@
         background: #d8f6dc;
       }
 
+      .checker-board {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0;
+        border: 4px solid #6e4b2f;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .checker-square {
+        width: 12.5%;
+        aspect-ratio: 1 / 1;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: box-shadow 0.2s ease, transform 0.08s ease;
+      }
+
+      .checker-square.light {
+        background: #f0d9b5;
+      }
+
+      .checker-square.dark {
+        background: #9b6b43;
+      }
+
+      .checker-square.selected {
+        box-shadow: inset 0 0 0 4px #ffe45e;
+      }
+
+      .checker-square.valid-move::after {
+        content: "";
+        width: 34%;
+        height: 34%;
+        border-radius: 50%;
+        background: rgba(42, 117, 64, 0.62);
+        position: absolute;
+      }
+
+      .checker-piece {
+        width: 74%;
+        height: 74%;
+        border-radius: 50%;
+        box-shadow: inset 0 3px 5px rgba(255, 255, 255, 0.35), inset 0 -5px 7px rgba(0, 0, 0, 0.22), 0 3px 4px rgba(0, 0, 0, 0.28);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(0.75rem, 4vw, 1.2rem);
+        font-weight: 800;
+        line-height: 1;
+        z-index: 1;
+      }
+
+      .checker-piece.red {
+        background: #d73a31;
+        color: #fff6d5;
+      }
+
+      .checker-piece.black {
+        background: #1f2933;
+        color: #ffe45e;
+      }
+
+      .checker-piece.king::before {
+        content: "K";
+      }
+
       @media (max-width: 480px) {
         .game {
           padding: 16px;
@@ -124,9 +197,16 @@
   </head>
   <body>
     <main class="game">
-      <h1>Tic-Tac-Toe</h1>
+      <h1 id="title">Tic-Tac-Toe</h1>
 
       <div class="controls">
+        <label for="game-select">
+          Game
+          <select id="game-select" aria-label="Select game">
+            <option value="tictactoe">Tic-Tac-Toe</option>
+            <option value="checkers">Checkers</option>
+          </select>
+        </label>
         <label for="difficulty">
           Difficulty
           <select id="difficulty" aria-label="Select computer difficulty">
@@ -147,6 +227,8 @@
       (function () {
         var PLAYER = 'X';
         var COMPUTER = 'O';
+        var CHECKERS_PLAYER = 'red';
+        var CHECKERS_COMPUTER = 'black';
         var WIN_LINES = [
           [0, 1, 2],
           [3, 4, 5],
@@ -162,15 +244,28 @@
         var statusElement = document.getElementById('status');
         var resetButton = document.getElementById('reset');
         var difficultySelect = document.getElementById('difficulty');
+        var gameSelect = document.getElementById('game-select');
+        var titleElement = document.getElementById('title');
 
+        var currentGame = 'tictactoe';
         var board = Array(9).fill('');
         var gameOver = false;
         var turn = PLAYER;
         var lastMove = -1;
         var winningLine = null;
 
-        function createBoardButtons() {
+        var checkersBoard = createInitialCheckersBoard();
+        var checkersTurn = CHECKERS_PLAYER;
+        var checkersGameOver = false;
+        var checkersWinner = '';
+        var selectedSquare = -1;
+        var validCheckersMoves = [];
+        var forcedJumpFrom = -1;
+
+        function createTicTacToeBoardButtons() {
           boardElement.innerHTML = '';
+          boardElement.className = 'board';
+          boardElement.setAttribute('aria-label', 'Tic-Tac-Toe board');
           for (var i = 0; i < 9; i += 1) {
             var cellButton = document.createElement('button');
             cellButton.type = 'button';
@@ -183,16 +278,16 @@
           }
         }
 
-        function resetGame() {
+        function resetTicTacToeGame() {
           board = Array(9).fill('');
           gameOver = false;
           turn = PLAYER;
           lastMove = -1;
           winningLine = null;
-          updateView();
+          updateTicTacToeView();
         }
 
-        function updateView() {
+        function updateTicTacToeView() {
           var cells = boardElement.children;
           for (var i = 0; i < cells.length; i += 1) {
             var cell = cells[i];
@@ -210,7 +305,7 @@
             }
           }
 
-          var result = getResult(board);
+          var result = getTicTacToeResult(board);
           if (result.winner === PLAYER) {
             statusElement.textContent = 'You win!';
           } else if (result.winner === COMPUTER) {
@@ -225,7 +320,7 @@
         }
 
         function onCellClick(event) {
-          if (gameOver || turn !== PLAYER) {
+          if (currentGame !== 'tictactoe' || gameOver || turn !== PLAYER) {
             return;
           }
 
@@ -234,40 +329,40 @@
             return;
           }
 
-          makeMove(index, PLAYER);
-          updateView();
-          var result = getResult(board);
-          if (finishIfDone(result)) {
-            updateView();
+          makeTicTacToeMove(index, PLAYER);
+          updateTicTacToeView();
+          var result = getTicTacToeResult(board);
+          if (finishTicTacToeIfDone(result)) {
+            updateTicTacToeView();
             return;
           }
 
           turn = COMPUTER;
-          updateView();
+          updateTicTacToeView();
 
           window.setTimeout(function () {
-            if (gameOver) {
+            if (currentGame !== 'tictactoe' || gameOver) {
               return;
             }
-            var aiIndex = getComputerMove();
+            var aiIndex = getTicTacToeComputerMove();
             if (aiIndex >= 0) {
-              makeMove(aiIndex, COMPUTER);
+              makeTicTacToeMove(aiIndex, COMPUTER);
             }
-            var aiResult = getResult(board);
-            finishIfDone(aiResult);
+            var aiResult = getTicTacToeResult(board);
+            finishTicTacToeIfDone(aiResult);
             if (!gameOver) {
               turn = PLAYER;
             }
-            updateView();
+            updateTicTacToeView();
           }, 250);
         }
 
-        function makeMove(index, mark) {
+        function makeTicTacToeMove(index, mark) {
           board[index] = mark;
           lastMove = index;
         }
 
-        function finishIfDone(result) {
+        function finishTicTacToeIfDone(result) {
           if (result.winner || result.draw) {
             gameOver = true;
             winningLine = result.line;
@@ -276,7 +371,7 @@
           return false;
         }
 
-        function getResult(currentBoard) {
+        function getTicTacToeResult(currentBoard) {
           for (var i = 0; i < WIN_LINES.length; i += 1) {
             var line = WIN_LINES[i];
             var a = currentBoard[line[0]];
@@ -294,7 +389,7 @@
           return { winner: '', draw: false, line: null };
         }
 
-        function getAvailableMoves(currentBoard) {
+        function getTicTacToeAvailableMoves(currentBoard) {
           var moves = [];
           for (var i = 0; i < currentBoard.length; i += 1) {
             if (currentBoard[i] === '') {
@@ -304,15 +399,15 @@
           return moves;
         }
 
-        function getRandomMove(currentBoard) {
-          var moves = getAvailableMoves(currentBoard);
+        function getTicTacToeRandomMove(currentBoard) {
+          var moves = getTicTacToeAvailableMoves(currentBoard);
           if (moves.length === 0) {
             return -1;
           }
           return moves[Math.floor(Math.random() * moves.length)];
         }
 
-        function findLineMove(currentBoard, mark) {
+        function findTicTacToeLineMove(currentBoard, mark) {
           for (var i = 0; i < WIN_LINES.length; i += 1) {
             var line = WIN_LINES[i];
             var values = [
@@ -330,24 +425,24 @@
           return -1;
         }
 
-        function getMediumMove(currentBoard) {
-          var winningMove = findLineMove(currentBoard, COMPUTER);
+        function getTicTacToeMediumMove(currentBoard) {
+          var winningMove = findTicTacToeLineMove(currentBoard, COMPUTER);
           if (winningMove >= 0) {
             return winningMove;
           }
 
-          var blockingMove = findLineMove(currentBoard, PLAYER);
+          var blockingMove = findTicTacToeLineMove(currentBoard, PLAYER);
           if (blockingMove >= 0) {
             return blockingMove;
           }
 
-          return getRandomMove(currentBoard);
+          return getTicTacToeRandomMove(currentBoard);
         }
 
-        function getHardMove(currentBoard) {
+        function getTicTacToeHardMove(currentBoard) {
           var bestScore = -Infinity;
           var bestMove = -1;
-          var moves = getAvailableMoves(currentBoard);
+          var moves = getTicTacToeAvailableMoves(currentBoard);
 
           for (var i = 0; i < moves.length; i += 1) {
             var move = moves[i];
@@ -365,7 +460,7 @@
         }
 
         function minimax(currentBoard, isMaximizing) {
-          var result = getResult(currentBoard);
+          var result = getTicTacToeResult(currentBoard);
           if (result.winner === COMPUTER) {
             return 10;
           }
@@ -376,7 +471,7 @@
             return 0;
           }
 
-          var moves = getAvailableMoves(currentBoard);
+          var moves = getTicTacToeAvailableMoves(currentBoard);
 
           if (isMaximizing) {
             var bestScore = -Infinity;
@@ -401,22 +496,467 @@
           return minScore;
         }
 
-        function getComputerMove() {
+        function getTicTacToeComputerMove() {
           var difficulty = difficultySelect.value;
           if (difficulty === 'easy') {
-            return getRandomMove(board.slice());
+            return getTicTacToeRandomMove(board.slice());
           }
           if (difficulty === 'medium') {
-            return getMediumMove(board.slice());
+            return getTicTacToeMediumMove(board.slice());
           }
-          return getHardMove(board.slice());
+          return getTicTacToeHardMove(board.slice());
         }
 
-        resetButton.addEventListener('click', resetGame);
-        difficultySelect.addEventListener('change', resetGame);
+        function createInitialCheckersBoard() {
+          var newBoard = Array(64).fill(null);
+          for (var row = 0; row < 8; row += 1) {
+            for (var col = 0; col < 8; col += 1) {
+              if (!isDarkSquare(row, col)) {
+                continue;
+              }
+              if (row < 3) {
+                newBoard[getCheckersIndex(row, col)] = { side: CHECKERS_COMPUTER, king: false };
+              } else if (row > 4) {
+                newBoard[getCheckersIndex(row, col)] = { side: CHECKERS_PLAYER, king: false };
+              }
+            }
+          }
+          return newBoard;
+        }
 
-        createBoardButtons();
-        resetGame();
+        function createCheckersBoardButtons() {
+          boardElement.innerHTML = '';
+          boardElement.className = 'checker-board';
+          boardElement.setAttribute('aria-label', 'Checkers board');
+          for (var i = 0; i < 64; i += 1) {
+            var squareButton = document.createElement('button');
+            var position = getCheckersPosition(i);
+            squareButton.type = 'button';
+            squareButton.className = 'checker-square ' + (isDarkSquare(position.row, position.col) ? 'dark' : 'light');
+            squareButton.setAttribute('role', 'gridcell');
+            squareButton.setAttribute('aria-label', 'Row ' + (position.row + 1) + ', column ' + (position.col + 1));
+            squareButton.dataset.index = String(i);
+            squareButton.addEventListener('click', onCheckersSquareClick);
+            boardElement.appendChild(squareButton);
+          }
+        }
+
+        function resetCheckersGame() {
+          checkersBoard = createInitialCheckersBoard();
+          checkersTurn = CHECKERS_PLAYER;
+          checkersGameOver = false;
+          checkersWinner = '';
+          selectedSquare = -1;
+          validCheckersMoves = [];
+          forcedJumpFrom = -1;
+          updateCheckersView();
+        }
+
+        function updateCheckersView() {
+          var cells = boardElement.children;
+          var validTargets = {};
+          for (var i = 0; i < validCheckersMoves.length; i += 1) {
+            validTargets[validCheckersMoves[i].to] = true;
+          }
+
+          for (var index = 0; index < cells.length; index += 1) {
+            var cell = cells[index];
+            var piece = checkersBoard[index];
+            cell.innerHTML = '';
+            cell.disabled = checkersGameOver || checkersTurn !== CHECKERS_PLAYER;
+            cell.classList.remove('selected');
+            cell.classList.remove('valid-move');
+            if (index === selectedSquare) {
+              cell.classList.add('selected');
+            }
+            if (validTargets[index]) {
+              cell.classList.add('valid-move');
+            }
+            if (piece) {
+              var pieceElement = document.createElement('span');
+              pieceElement.className = 'checker-piece ' + piece.side + (piece.king ? ' king' : '');
+              pieceElement.setAttribute('aria-hidden', 'true');
+              cell.appendChild(pieceElement);
+            }
+          }
+
+          if (checkersWinner === CHECKERS_PLAYER) {
+            statusElement.textContent = 'You win!';
+          } else if (checkersWinner === CHECKERS_COMPUTER) {
+            statusElement.textContent = 'Computer wins!';
+          } else if (forcedJumpFrom >= 0 && checkersTurn === CHECKERS_PLAYER) {
+            statusElement.textContent = 'You must continue jumping with the selected red piece.';
+          } else if (checkersTurn === CHECKERS_PLAYER) {
+            statusElement.textContent = 'Your turn (red).';
+          } else {
+            statusElement.textContent = 'Computer thinking...';
+          }
+        }
+
+        function onCheckersSquareClick(event) {
+          if (currentGame !== 'checkers' || checkersGameOver || checkersTurn !== CHECKERS_PLAYER) {
+            return;
+          }
+
+          var index = Number(event.currentTarget.dataset.index);
+          var move = getMoveToSquare(index);
+          if (move) {
+            makeCheckersMove(move);
+            updateCheckersView();
+            if (checkersGameOver) {
+              return;
+            }
+            if (move.capture !== -1 && !move.promoted) {
+              var moreJumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
+              if (moreJumps.length > 0) {
+                forcedJumpFrom = move.to;
+                selectedSquare = move.to;
+                validCheckersMoves = moreJumps;
+                updateCheckersView();
+                return;
+              }
+            }
+            endCheckersPlayerTurn();
+            return;
+          }
+
+          selectCheckersPiece(index);
+        }
+
+        function selectCheckersPiece(index) {
+          var piece = checkersBoard[index];
+          if (!piece || piece.side !== CHECKERS_PLAYER) {
+            return;
+          }
+          if (forcedJumpFrom >= 0 && index !== forcedJumpFrom) {
+            return;
+          }
+
+          var allMoves = getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER);
+          var mustCapture = allMoves.some(function (move) { return move.capture !== -1; });
+          var moves = getCheckersMovesForPiece(checkersBoard, index, mustCapture);
+          if (moves.length === 0) {
+            return;
+          }
+          selectedSquare = index;
+          validCheckersMoves = moves;
+          updateCheckersView();
+        }
+
+        function getMoveToSquare(index) {
+          for (var i = 0; i < validCheckersMoves.length; i += 1) {
+            if (validCheckersMoves[i].to === index) {
+              return validCheckersMoves[i];
+            }
+          }
+          return null;
+        }
+
+        function endCheckersPlayerTurn() {
+          forcedJumpFrom = -1;
+          selectedSquare = -1;
+          validCheckersMoves = [];
+          checkersTurn = CHECKERS_COMPUTER;
+          updateCheckersView();
+          window.setTimeout(function () {
+            if (currentGame !== 'checkers' || checkersGameOver) {
+              return;
+            }
+            playComputerCheckersTurn();
+          }, 350);
+        }
+
+        function playComputerCheckersTurn() {
+          var moves = getAllCheckersMoves(checkersBoard, CHECKERS_COMPUTER);
+          if (moves.length === 0) {
+            finishCheckersGame(CHECKERS_PLAYER);
+            updateCheckersView();
+            return;
+          }
+
+          var move = chooseCheckersMove(moves);
+          makeCheckersMove(move);
+
+          while (!checkersGameOver && move.capture !== -1 && !move.promoted) {
+            var jumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
+            if (jumps.length === 0) {
+              break;
+            }
+            move = chooseCheckersMove(jumps);
+            makeCheckersMove(move);
+          }
+
+          if (!checkersGameOver) {
+            checkersTurn = CHECKERS_PLAYER;
+            if (getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER).length === 0) {
+              finishCheckersGame(CHECKERS_COMPUTER);
+            }
+          }
+          updateCheckersView();
+        }
+
+        function makeCheckersMove(move) {
+          var piece = checkersBoard[move.from];
+          checkersBoard[move.from] = null;
+          if (move.capture !== -1) {
+            checkersBoard[move.capture] = null;
+          }
+          checkersBoard[move.to] = piece;
+          move.promoted = promoteCheckersPieceIfNeeded(move.to);
+          selectedSquare = -1;
+          validCheckersMoves = [];
+          forcedJumpFrom = -1;
+
+          var opponent = piece.side === CHECKERS_PLAYER ? CHECKERS_COMPUTER : CHECKERS_PLAYER;
+          if (countCheckersPieces(checkersBoard, opponent) === 0) {
+            finishCheckersGame(piece.side);
+          }
+        }
+
+        function promoteCheckersPieceIfNeeded(index) {
+          var piece = checkersBoard[index];
+          var row = getCheckersPosition(index).row;
+          if (!piece || piece.king) {
+            return false;
+          }
+          if ((piece.side === CHECKERS_PLAYER && row === 0) || (piece.side === CHECKERS_COMPUTER && row === 7)) {
+            piece.king = true;
+            return true;
+          }
+          return false;
+        }
+
+        function finishCheckersGame(winner) {
+          checkersGameOver = true;
+          checkersWinner = winner;
+          checkersTurn = '';
+        }
+
+        function getAllCheckersMoves(currentBoard, side) {
+          var moves = [];
+          var jumps = [];
+          for (var i = 0; i < currentBoard.length; i += 1) {
+            var piece = currentBoard[i];
+            if (piece && piece.side === side) {
+              var pieceMoves = getCheckersMovesForPiece(currentBoard, i, false);
+              for (var j = 0; j < pieceMoves.length; j += 1) {
+                if (pieceMoves[j].capture !== -1) {
+                  jumps.push(pieceMoves[j]);
+                } else {
+                  moves.push(pieceMoves[j]);
+                }
+              }
+            }
+          }
+          return jumps.length > 0 ? jumps : moves;
+        }
+
+        function getCheckersMovesForPiece(currentBoard, index, capturesOnly) {
+          var piece = currentBoard[index];
+          var moves = [];
+          if (!piece) {
+            return moves;
+          }
+          var position = getCheckersPosition(index);
+          var directions = getCheckersDirections(piece);
+          for (var i = 0; i < directions.length; i += 1) {
+            var direction = directions[i];
+            var row = position.row + direction.row;
+            var col = position.col + direction.col;
+            if (!isOnCheckersBoard(row, col)) {
+              continue;
+            }
+            var targetIndex = getCheckersIndex(row, col);
+            var targetPiece = currentBoard[targetIndex];
+            if (!targetPiece && !capturesOnly) {
+              moves.push({ from: index, to: targetIndex, capture: -1, promoted: false });
+            } else if (targetPiece && targetPiece.side !== piece.side) {
+              var jumpRow = row + direction.row;
+              var jumpCol = col + direction.col;
+              if (isOnCheckersBoard(jumpRow, jumpCol)) {
+                var jumpIndex = getCheckersIndex(jumpRow, jumpCol);
+                if (!currentBoard[jumpIndex]) {
+                  moves.push({ from: index, to: jumpIndex, capture: targetIndex, promoted: false });
+                }
+              }
+            }
+          }
+          if (capturesOnly) {
+            return moves.filter(function (move) { return move.capture !== -1; });
+          }
+          return moves;
+        }
+
+        function chooseCheckersMove(moves) {
+          var difficulty = difficultySelect.value;
+          if (difficulty === 'easy') {
+            return getRandomCheckersMove(moves);
+          }
+          if (difficulty === 'medium') {
+            return getBestImmediateCheckersMove(moves);
+          }
+          return getBestLookAheadCheckersMove(moves);
+        }
+
+        function getRandomCheckersMove(moves) {
+          return moves[Math.floor(Math.random() * moves.length)];
+        }
+
+        function getBestImmediateCheckersMove(moves) {
+          var bestScore = -Infinity;
+          var bestMoves = [];
+          for (var i = 0; i < moves.length; i += 1) {
+            var score = scoreCheckersMove(checkersBoard, moves[i], CHECKERS_COMPUTER);
+            if (score > bestScore) {
+              bestScore = score;
+              bestMoves = [moves[i]];
+            } else if (score === bestScore) {
+              bestMoves.push(moves[i]);
+            }
+          }
+          return getRandomCheckersMove(bestMoves);
+        }
+
+        function getBestLookAheadCheckersMove(moves) {
+          var bestScore = -Infinity;
+          var bestMoves = [];
+          for (var i = 0; i < moves.length; i += 1) {
+            var boardAfterMove = copyCheckersBoard(checkersBoard);
+            applyCheckersMoveToBoard(boardAfterMove, moves[i]);
+            var score = evaluateCheckersBoard(boardAfterMove) + scoreCheckersMove(checkersBoard, moves[i], CHECKERS_COMPUTER);
+            var playerReplies = getAllCheckersMoves(boardAfterMove, CHECKERS_PLAYER);
+            for (var j = 0; j < playerReplies.length; j += 1) {
+              var replyBoard = copyCheckersBoard(boardAfterMove);
+              applyCheckersMoveToBoard(replyBoard, playerReplies[j]);
+              score = Math.min(score, evaluateCheckersBoard(replyBoard));
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              bestMoves = [moves[i]];
+            } else if (score === bestScore) {
+              bestMoves.push(moves[i]);
+            }
+          }
+          return getRandomCheckersMove(bestMoves);
+        }
+
+        function scoreCheckersMove(currentBoard, move, side) {
+          var score = 0;
+          var piece = currentBoard[move.from];
+          var targetRow = getCheckersPosition(move.to).row;
+          if (move.capture !== -1) {
+            score += currentBoard[move.capture] && currentBoard[move.capture].king ? 5 : 3;
+          }
+          if (piece && !piece.king && ((side === CHECKERS_COMPUTER && targetRow === 7) || (side === CHECKERS_PLAYER && targetRow === 0))) {
+            score += 4;
+          }
+          return score;
+        }
+
+        function evaluateCheckersBoard(currentBoard) {
+          var score = 0;
+          for (var i = 0; i < currentBoard.length; i += 1) {
+            var piece = currentBoard[i];
+            if (piece) {
+              var value = piece.king ? 5 : 3;
+              score += piece.side === CHECKERS_COMPUTER ? value : -value;
+            }
+          }
+          return score;
+        }
+
+        function applyCheckersMoveToBoard(currentBoard, move) {
+          var piece = currentBoard[move.from];
+          currentBoard[move.from] = null;
+          if (move.capture !== -1) {
+            currentBoard[move.capture] = null;
+          }
+          currentBoard[move.to] = piece;
+          var row = getCheckersPosition(move.to).row;
+          if (piece && !piece.king && ((piece.side === CHECKERS_PLAYER && row === 0) || (piece.side === CHECKERS_COMPUTER && row === 7))) {
+            piece.king = true;
+          }
+        }
+
+        function copyCheckersBoard(currentBoard) {
+          return currentBoard.map(function (piece) {
+            return piece ? { side: piece.side, king: piece.king } : null;
+          });
+        }
+
+        function countCheckersPieces(currentBoard, side) {
+          var count = 0;
+          for (var i = 0; i < currentBoard.length; i += 1) {
+            if (currentBoard[i] && currentBoard[i].side === side) {
+              count += 1;
+            }
+          }
+          return count;
+        }
+
+        function getCheckersDirections(piece) {
+          if (piece.king) {
+            return [
+              { row: -1, col: -1 },
+              { row: -1, col: 1 },
+              { row: 1, col: -1 },
+              { row: 1, col: 1 }
+            ];
+          }
+          if (piece.side === CHECKERS_PLAYER) {
+            return [
+              { row: -1, col: -1 },
+              { row: -1, col: 1 }
+            ];
+          }
+          return [
+            { row: 1, col: -1 },
+            { row: 1, col: 1 }
+          ];
+        }
+
+        function getCheckersPosition(index) {
+          return { row: Math.floor(index / 8), col: index % 8 };
+        }
+
+        function getCheckersIndex(row, col) {
+          return row * 8 + col;
+        }
+
+        function isOnCheckersBoard(row, col) {
+          return row >= 0 && row < 8 && col >= 0 && col < 8;
+        }
+
+        function isDarkSquare(row, col) {
+          return (row + col) % 2 === 1;
+        }
+
+        function resetCurrentGame() {
+          if (currentGame === 'checkers') {
+            resetCheckersGame();
+          } else {
+            resetTicTacToeGame();
+          }
+        }
+
+        function switchGame() {
+          currentGame = gameSelect.value;
+          if (currentGame === 'checkers') {
+            titleElement.textContent = 'Checkers';
+            createCheckersBoardButtons();
+          } else {
+            titleElement.textContent = 'Tic-Tac-Toe';
+            createTicTacToeBoardButtons();
+          }
+          resetCurrentGame();
+        }
+
+        resetButton.addEventListener('click', resetCurrentGame);
+        difficultySelect.addEventListener('change', resetCurrentGame);
+        gameSelect.addEventListener('change', switchGame);
+
+        createTicTacToeBoardButtons();
+        resetTicTacToeGame();
       })();
     </script>
   </body>
