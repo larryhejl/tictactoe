@@ -634,7 +634,10 @@
 
           var allMoves = getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER);
           var mustCapture = allMoves.some(function (move) { return move.capture !== -1; });
-          var moves = getCheckersMovesForPiece(checkersBoard, index, mustCapture);
+          var moves = getCheckersMovesForPiece(checkersBoard, index, false);
+          if (mustCapture) {
+            moves = moves.filter(function (move) { return move.capture !== -1; });
+          }
           if (moves.length === 0) {
             return;
           }
