@@ -1174,13 +1174,13 @@
           validChessMoves = [];
         }
 
-        function getChessEndState(currentBoard, sideToMove, mover) {
+        function getChessEndState(currentBoard, sideToMove, opponent) {
           var legalMoves = getAllChessMoves(currentBoard, sideToMove);
           if (legalMoves.length > 0) {
             return { over: false, winner: '', draw: false };
           }
           if (isChessKingInCheck(currentBoard, sideToMove)) {
-            return { over: true, winner: mover, draw: false };
+            return { over: true, winner: opponent, draw: false };
           }
           return { over: true, winner: '', draw: true };
         }
