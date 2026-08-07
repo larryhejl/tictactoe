@@ -1424,7 +1424,7 @@
               for (var j = 0; j < playerReplies.length; j += 1) {
                 var replyBoard = copyChessBoard(boardAfterMove);
                 applyChessMoveToBoard(replyBoard, playerReplies[j]);
-                var replyScore = evaluateChessBoard(replyBoard) - scoreChessMove(boardAfterMove, playerReplies[j], CHESS_PLAYER);
+                var replyScore = evaluateChessBoard(replyBoard);
                 worstReplyScore = Math.min(worstReplyScore, replyScore);
               }
               score = baseScore + worstReplyScore;
