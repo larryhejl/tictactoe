@@ -231,6 +231,50 @@
         position: absolute;
       }
 
+      .sudoku-board {
+        display: flex;
+        flex-wrap: wrap;
+        border: 4px solid #1f2937;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .sudoku-cell {
+        width: calc(100% / 9);
+        aspect-ratio: 1 / 1;
+        border: 1px solid #d7dee6;
+        border-radius: 0;
+        padding: 0;
+        text-align: center;
+        font-size: clamp(0.9rem, 4.5vw, 1.4rem);
+        font-weight: 700;
+        color: #1a1f36;
+        background: #fdfefe;
+        -moz-appearance: textfield;
+      }
+
+      .sudoku-cell.thick-right {
+        border-right: 3px solid #1f2937;
+      }
+
+      .sudoku-cell.thick-bottom {
+        border-bottom: 3px solid #1f2937;
+      }
+
+      .sudoku-cell.given {
+        background: #eef2f7;
+        color: #1f2937;
+      }
+
+      .sudoku-cell.conflict {
+        background: #ffe4e6;
+        color: #b91c1c;
+      }
+
+      .sudoku-cell:disabled {
+        opacity: 1;
+      }
+
       .hangman-board {
         display: grid;
         gap: 18px;
@@ -298,6 +342,7 @@
             <option value="checkers" selected>Checkers</option>
             <option value="chess">Chess</option>
             <option value="hangman">Hangman</option>
+            <option value="sudoku">Sudoku</option>
           </select>
         </label>
         <label for="difficulty">
@@ -376,6 +421,16 @@
         var hangmanGuesses = [];
         var hangmanWrongGuesses = 0;
         var hangmanGameOver = false;
+
+        var SUDOKU_CLUES_BY_DIFFICULTY = {
+          easy: 45,
+          medium: 34,
+          hard: 26
+        };
+        var sudokuSolution = [];
+        var sudokuBoard = [];
+        var sudokuGivenMask = [];
+        var sudokuGameOver = false;
 
         function createTicTacToeBoardButtons() {
           boardElement.innerHTML = '';
@@ -1699,6 +1754,193 @@
             ' +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n======='
           ];
           return figures[Math.min(wrongGuesses, figures.length - 1)];
+        }
+
+        function shuffleArray(items) {
+          var shuffled = items.slice();
+          for (var i = shuffled.length - 1; i > 0; i -= 1) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = temp;
+          }
+          return shuffled;
+        }
+
+        function isSudokuPlacementValid(currentBoard, row, col, value) {
+          for (var i = 0; i < 9; i += 1) {
+            if (currentBoard[row * 9 + i] === value || currentBoard[i * 9 + col] === value) {
+              return false;
+            }
+          }
+          var boxRow = Math.floor(row / 3) * 3;
+          var boxCol = Math.floor(col / 3) * 3;
+          for (var r = boxRow; r < boxRow + 3; r += 1) {
+            for (var c = boxCol; c < boxCol + 3; c += 1) {
+              if (currentBoard[r * 9 + c] === value) {
+                return false;
+              }
+            }
+          }
+          return true;
+        }
+
+        function fillSudokuGrid(currentBoard, position) {
+          if (position === 81) {
+            return true;
+          }
+          if (currentBoard[position] !== 0) {
+            return fillSudokuGrid(currentBoard, position + 1);
+          }
+          var row = Math.floor(position / 9);
+          var col = position % 9;
+          var candidates = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+          for (var i = 0; i < candidates.length; i += 1) {
+            var value = candidates[i];
+            if (isSudokuPlacementValid(currentBoard, row, col, value)) {
+              currentBoard[position] = value;
+              if (fillSudokuGrid(currentBoard, position + 1)) {
+                return true;
+              }
+              currentBoard[position] = 0;
+            }
+          }
+          return false;
+        }
+
+        function generateSudokuSolution() {
+          var grid = Array(81).fill(0);
+          fillSudokuGrid(grid, 0);
+          return grid;
+        }
+
+        function generateSudokuPuzzle(solution, cluesCount) {
+          var puzzle = solution.slice();
+          var indices = shuffleArray(Array.from({ length: 81 }, function (_, i) { return i; }));
+          var removeCount = 81 - cluesCount;
+          for (var i = 0; i < removeCount; i += 1) {
+            puzzle[indices[i]] = 0;
+          }
+          return puzzle;
+        }
+
+        function getSudokuCluesCount(difficulty) {
+          return SUDOKU_CLUES_BY_DIFFICULTY[difficulty] || SUDOKU_CLUES_BY_DIFFICULTY.medium;
+        }
+
+        function hasSudokuConflict(currentBoard, index) {
+          var value = currentBoard[index];
+          if (value === 0) {
+            return false;
+          }
+          var row = Math.floor(index / 9);
+          var col = index % 9;
+          for (var c = 0; c < 9; c += 1) {
+            var rowIndex = row * 9 + c;
+            if (rowIndex !== index && currentBoard[rowIndex] === value) {
+              return true;
+            }
+          }
+          for (var r = 0; r < 9; r += 1) {
+            var colIndex = r * 9 + col;
+            if (colIndex !== index && currentBoard[colIndex] === value) {
+              return true;
+            }
+          }
+          var boxRow = Math.floor(row / 3) * 3;
+          var boxCol = Math.floor(col / 3) * 3;
+          for (var br = boxRow; br < boxRow + 3; br += 1) {
+            for (var bc = boxCol; bc < boxCol + 3; bc += 1) {
+              var boxIndex = br * 9 + bc;
+              if (boxIndex !== index && currentBoard[boxIndex] === value) {
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+
+        function isSudokuSolved(currentBoard) {
+          if (currentBoard.indexOf(0) !== -1) {
+            return false;
+          }
+          for (var i = 0; i < 81; i += 1) {
+            if (hasSudokuConflict(currentBoard, i)) {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        function createSudokuBoardButtons() {
+          boardElement.innerHTML = '';
+          boardElement.className = 'board sudoku-board';
+          boardElement.setAttribute('aria-label', 'Sudoku board');
+          for (var i = 0; i < 81; i += 1) {
+            var row = Math.floor(i / 9);
+            var col = i % 9;
+            var cellInput = document.createElement('input');
+            cellInput.type = 'text';
+            cellInput.inputMode = 'numeric';
+            cellInput.pattern = '[1-9]';
+            cellInput.maxLength = 1;
+            cellInput.className = 'sudoku-cell';
+            if (col === 2 || col === 5) {
+              cellInput.classList.add('thick-right');
+            }
+            if (row === 2 || row === 5) {
+              cellInput.classList.add('thick-bottom');
+            }
+            cellInput.dataset.index = String(i);
+            cellInput.setAttribute('aria-label', 'Row ' + (row + 1) + ' Column ' + (col + 1));
+            cellInput.addEventListener('input', onSudokuCellInput);
+            boardElement.appendChild(cellInput);
+          }
+        }
+
+        function resetSudokuGame() {
+          sudokuSolution = generateSudokuSolution();
+          var cluesCount = getSudokuCluesCount(difficultySelect.value);
+          sudokuBoard = generateSudokuPuzzle(sudokuSolution, cluesCount);
+          sudokuGivenMask = sudokuBoard.map(function (value) { return value !== 0; });
+          sudokuGameOver = false;
+          updateSudokuView();
+        }
+
+        function onSudokuCellInput(event) {
+          if (currentGame !== 'sudoku' || sudokuGameOver) {
+            return;
+          }
+          var index = Number(event.currentTarget.dataset.index);
+          if (sudokuGivenMask[index]) {
+            return;
+          }
+          var digits = event.currentTarget.value.replace(/[^1-9]/g, '');
+          var digit = digits.slice(-1);
+          event.currentTarget.value = digit;
+          sudokuBoard[index] = digit === '' ? 0 : Number(digit);
+          if (isSudokuSolved(sudokuBoard)) {
+            sudokuGameOver = true;
+          }
+          updateSudokuView();
+        }
+
+        function updateSudokuView() {
+          var cells = boardElement.querySelectorAll('.sudoku-cell');
+          cells.forEach(function (cell, index) {
+            var value = sudokuBoard[index];
+            cell.value = value === 0 ? '' : String(value);
+            cell.disabled = sudokuGivenMask[index] || sudokuGameOver;
+            cell.classList.toggle('given', sudokuGivenMask[index]);
+            cell.classList.toggle('conflict', value !== 0 && hasSudokuConflict(sudokuBoard, index));
+          });
+          if (sudokuGameOver) {
+            statusElement.textContent = 'Solved! Great job.';
+          } else if (sudokuBoard.indexOf(0) === -1) {
+            statusElement.textContent = 'All cells are filled, but some numbers conflict. Keep adjusting.';
+          } else {
+            statusElement.textContent = 'Fill the grid so each row, column, and 3x3 box contains 1-9.';
+          }
         }
 
         function resetCurrentGame() {
