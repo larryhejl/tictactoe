@@ -659,6 +659,15 @@
           var move = chooseCheckersMove(moves);
           makeCheckersMove(move);
 
+          while (!checkersGameOver && move.capture !== -1 && !move.promoted) {
+            var jumps = getCheckersJumpsForPiece(checkersBoard, move.to);
+            if (jumps.length === 0) {
+              break;
+            }
+            move = chooseCheckersMove(jumps);
+            makeCheckersMove(move);
+          }
+
           if (!checkersGameOver) {
             checkersTurn = CHECKERS_PLAYER;
             if (getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER).length === 0) {
@@ -749,6 +758,12 @@
             }
           }
           return moves;
+        }
+
+        function getCheckersJumpsForPiece(currentBoard, index) {
+          return getCheckersMovesForPiece(currentBoard, index).filter(function (move) {
+            return move.capture !== -1;
+          });
         }
 
         function chooseCheckersMove(moves) {
