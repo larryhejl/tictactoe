@@ -260,7 +260,6 @@
         var checkersWinner = '';
         var selectedSquare = -1;
         var validCheckersMoves = [];
-        var forcedJumpFrom = -1;
 
         function createTicTacToeBoardButtons() {
           boardElement.innerHTML = '';
@@ -548,7 +547,6 @@
           checkersWinner = '';
           selectedSquare = -1;
           validCheckersMoves = [];
-          forcedJumpFrom = -1;
           updateCheckersView();
         }
 
@@ -584,8 +582,6 @@
             statusElement.textContent = 'You win!';
           } else if (checkersWinner === CHECKERS_COMPUTER) {
             statusElement.textContent = 'Computer wins!';
-          } else if (forcedJumpFrom >= 0 && checkersTurn === CHECKERS_PLAYER) {
-            statusElement.textContent = 'You must continue jumping with the selected red piece.';
           } else if (checkersTurn === CHECKERS_PLAYER) {
             statusElement.textContent = 'Your turn (red).';
           } else {
@@ -606,16 +602,6 @@
             if (checkersGameOver) {
               return;
             }
-            if (move.capture !== -1 && !move.promoted) {
-              var moreJumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
-              if (moreJumps.length > 0) {
-                forcedJumpFrom = move.to;
-                selectedSquare = move.to;
-                validCheckersMoves = moreJumps;
-                updateCheckersView();
-                return;
-              }
-            }
             endCheckersPlayerTurn();
             return;
           }
@@ -628,16 +614,7 @@
           if (!piece || piece.side !== CHECKERS_PLAYER) {
             return;
           }
-          if (forcedJumpFrom >= 0 && index !== forcedJumpFrom) {
-            return;
-          }
-
-          var allMoves = getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER);
-          var mustCapture = allMoves.some(function (move) { return move.capture !== -1; });
-          var moves = getCheckersMovesForPiece(checkersBoard, index, false);
-          if (mustCapture) {
-            moves = moves.filter(function (move) { return move.capture !== -1; });
-          }
+          var moves = getCheckersMovesForPiece(checkersBoard, index);
           if (moves.length === 0) {
             selectedSquare = -1;
             validCheckersMoves = [];
@@ -659,7 +636,6 @@
         }
 
         function endCheckersPlayerTurn() {
-          forcedJumpFrom = -1;
           selectedSquare = -1;
           validCheckersMoves = [];
           checkersTurn = CHECKERS_COMPUTER;
@@ -684,7 +660,7 @@
           makeCheckersMove(move);
 
           while (!checkersGameOver && move.capture !== -1 && !move.promoted) {
-            var jumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
+            var jumps = getCheckersJumpsForPiece(checkersBoard, move.to);
             if (jumps.length === 0) {
               break;
             }
@@ -711,7 +687,6 @@
           move.promoted = promoteCheckersPieceIfNeeded(move.to);
           selectedSquare = -1;
           validCheckersMoves = [];
-          forcedJumpFrom = -1;
 
           var opponent = piece.side === CHECKERS_PLAYER ? CHECKERS_COMPUTER : CHECKERS_PLAYER;
           if (countCheckersPieces(checkersBoard, opponent) === 0) {
@@ -740,24 +715,19 @@
 
         function getAllCheckersMoves(currentBoard, side) {
           var moves = [];
-          var jumps = [];
           for (var i = 0; i < currentBoard.length; i += 1) {
             var piece = currentBoard[i];
             if (piece && piece.side === side) {
-              var pieceMoves = getCheckersMovesForPiece(currentBoard, i, false);
+              var pieceMoves = getCheckersMovesForPiece(currentBoard, i);
               for (var j = 0; j < pieceMoves.length; j += 1) {
-                if (pieceMoves[j].capture !== -1) {
-                  jumps.push(pieceMoves[j]);
-                } else {
-                  moves.push(pieceMoves[j]);
-                }
+                moves.push(pieceMoves[j]);
               }
             }
           }
-          return jumps.length > 0 ? jumps : moves;
+          return moves;
         }
 
-        function getCheckersMovesForPiece(currentBoard, index, capturesOnly) {
+        function getCheckersMovesForPiece(currentBoard, index) {
           var piece = currentBoard[index];
           var moves = [];
           if (!piece) {
@@ -774,7 +744,7 @@
             }
             var targetIndex = getCheckersIndex(row, col);
             var targetPiece = currentBoard[targetIndex];
-            if (!targetPiece && !capturesOnly) {
+            if (!targetPiece) {
               moves.push({ from: index, to: targetIndex, capture: -1, promoted: false });
             } else if (targetPiece && targetPiece.side !== piece.side) {
               var jumpRow = row + direction.row;
@@ -787,10 +757,13 @@
               }
             }
           }
-          if (capturesOnly) {
-            return moves.filter(function (move) { return move.capture !== -1; });
-          }
           return moves;
+        }
+
+        function getCheckersJumpsForPiece(currentBoard, index) {
+          return getCheckersMovesForPiece(currentBoard, index).filter(function (move) {
+            return move.capture !== -1;
+          });
         }
 
         function chooseCheckersMove(moves) {
