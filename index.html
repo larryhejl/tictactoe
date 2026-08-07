@@ -969,14 +969,26 @@
           return (row + col) % 2 === 1;
         }
 
+        function getChessPosition(index) {
+          return getCheckersPosition(index);
+        }
+
+        function getChessIndex(row, col) {
+          return getCheckersIndex(row, col);
+        }
+
+        function isOnChessBoard(row, col) {
+          return isOnCheckersBoard(row, col);
+        }
+
         function createInitialChessBoard() {
           var newBoard = Array(64).fill(null);
           var backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
           for (var col = 0; col < 8; col += 1) {
-            newBoard[getCheckersIndex(0, col)] = { side: CHESS_COMPUTER, type: backRank[col] };
-            newBoard[getCheckersIndex(1, col)] = { side: CHESS_COMPUTER, type: 'p' };
-            newBoard[getCheckersIndex(6, col)] = { side: CHESS_PLAYER, type: 'p' };
-            newBoard[getCheckersIndex(7, col)] = { side: CHESS_PLAYER, type: backRank[col] };
+            newBoard[getChessIndex(0, col)] = { side: CHESS_COMPUTER, type: backRank[col] };
+            newBoard[getChessIndex(1, col)] = { side: CHESS_COMPUTER, type: 'p' };
+            newBoard[getChessIndex(6, col)] = { side: CHESS_PLAYER, type: 'p' };
+            newBoard[getChessIndex(7, col)] = { side: CHESS_PLAYER, type: backRank[col] };
           }
           return newBoard;
         }
@@ -987,7 +999,7 @@
           boardElement.setAttribute('aria-label', 'Chess board');
           for (var i = 0; i < 64; i += 1) {
             var squareButton = document.createElement('button');
-            var position = getCheckersPosition(i);
+            var position = getChessPosition(i);
             squareButton.type = 'button';
             squareButton.className = 'chess-square ' + (isDarkSquare(position.row, position.col) ? 'dark' : 'light');
             squareButton.setAttribute('role', 'gridcell');
@@ -1146,7 +1158,7 @@
           if (!piece || piece.type !== 'p') {
             return;
           }
-          var row = getCheckersPosition(index).row;
+          var row = getChessPosition(index).row;
           if ((piece.side === CHESS_PLAYER && row === 0) || (piece.side === CHESS_COMPUTER && row === 7)) {
             piece.type = 'q';
           }
@@ -1209,7 +1221,7 @@
           if (!piece) {
             return [];
           }
-          var position = getCheckersPosition(index);
+          var position = getChessPosition(index);
           var moves = [];
 
           if (piece.type === 'p') {
@@ -1241,14 +1253,14 @@
         function addChessPawnMoves(moves, currentBoard, index, position, piece, attackOnly) {
           var direction = piece.side === CHESS_PLAYER ? -1 : 1;
           var oneRow = position.row + direction;
-          if (!attackOnly && isOnCheckersBoard(oneRow, position.col)) {
-            var oneStepIndex = getCheckersIndex(oneRow, position.col);
+          if (!attackOnly && isOnChessBoard(oneRow, position.col)) {
+            var oneStepIndex = getChessIndex(oneRow, position.col);
             if (!currentBoard[oneStepIndex]) {
               moves.push({ from: index, to: oneStepIndex });
               var startRow = piece.side === CHESS_PLAYER ? 6 : 1;
               var twoRow = position.row + direction * 2;
-              if (position.row === startRow && isOnCheckersBoard(twoRow, position.col)) {
-                var twoStepIndex = getCheckersIndex(twoRow, position.col);
+              if (position.row === startRow && isOnChessBoard(twoRow, position.col)) {
+                var twoStepIndex = getChessIndex(twoRow, position.col);
                 if (!currentBoard[twoStepIndex]) {
                   moves.push({ from: index, to: twoStepIndex });
                 }
@@ -1260,10 +1272,10 @@
           for (var i = 0; i < captureCols.length; i += 1) {
             var col = captureCols[i];
             var row = position.row + direction;
-            if (!isOnCheckersBoard(row, col)) {
+            if (!isOnChessBoard(row, col)) {
               continue;
             }
-            var captureIndex = getCheckersIndex(row, col);
+            var captureIndex = getChessIndex(row, col);
             if (attackOnly) {
               moves.push({ from: index, to: captureIndex });
               continue;
@@ -1283,10 +1295,10 @@
           for (var i = 0; i < offsets.length; i += 1) {
             var targetRow = position.row + offsets[i].row;
             var targetCol = position.col + offsets[i].col;
-            if (!isOnCheckersBoard(targetRow, targetCol)) {
+            if (!isOnChessBoard(targetRow, targetCol)) {
               continue;
             }
-            var targetIndex = getCheckersIndex(targetRow, targetCol);
+            var targetIndex = getChessIndex(targetRow, targetCol);
             var targetPiece = currentBoard[targetIndex];
             if (!targetPiece || targetPiece.side !== piece.side) {
               moves.push({ from: index, to: targetIndex });
@@ -1298,8 +1310,8 @@
           for (var i = 0; i < directions.length; i += 1) {
             var row = position.row + directions[i].row;
             var col = position.col + directions[i].col;
-            while (isOnCheckersBoard(row, col)) {
-              var targetIndex = getCheckersIndex(row, col);
+            while (isOnChessBoard(row, col)) {
+              var targetIndex = getChessIndex(row, col);
               var targetPiece = currentBoard[targetIndex];
               if (!targetPiece) {
                 moves.push({ from: index, to: targetIndex });
@@ -1323,10 +1335,10 @@
               }
               var targetRow = position.row + rowOffset;
               var targetCol = position.col + colOffset;
-              if (!isOnCheckersBoard(targetRow, targetCol)) {
+              if (!isOnChessBoard(targetRow, targetCol)) {
                 continue;
               }
-              var targetIndex = getCheckersIndex(targetRow, targetCol);
+              var targetIndex = getChessIndex(targetRow, targetCol);
               var targetPiece = currentBoard[targetIndex];
               if (!targetPiece || targetPiece.side !== piece.side) {
                 moves.push({ from: index, to: targetIndex });
@@ -1414,7 +1426,7 @@
                 var replyScore = evaluateChessBoard(replyBoard) - scoreChessMove(boardAfterMove, playerReplies[j], CHESS_PLAYER);
                 worstReplyScore = Math.min(worstReplyScore, replyScore);
               }
-              score = Math.min(score, worstReplyScore);
+              score = worstReplyScore;
             }
             if (score > bestScore) {
               bestScore = score;
@@ -1433,7 +1445,7 @@
           if (targetPiece) {
             score += getChessPieceValue(targetPiece.type) * 2;
           }
-          var targetRow = getCheckersPosition(move.to).row;
+          var targetRow = getChessPosition(move.to).row;
           if (piece && piece.type === 'p' && ((side === CHESS_COMPUTER && targetRow === 7) || (side === CHESS_PLAYER && targetRow === 0))) {
             score += 8;
           }
@@ -1480,7 +1492,7 @@
           currentBoard[move.from] = null;
           currentBoard[move.to] = piece;
           if (piece && piece.type === 'p') {
-            var row = getCheckersPosition(move.to).row;
+            var row = getChessPosition(move.to).row;
             if ((piece.side === CHESS_PLAYER && row === 0) || (piece.side === CHESS_COMPUTER && row === 7)) {
               piece.type = 'q';
             }
