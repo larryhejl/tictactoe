@@ -204,7 +204,7 @@
           Game
           <select id="game-select" aria-label="Select game">
             <option value="tictactoe">Tic-Tac-Toe</option>
-            <option value="checkers">Checkers</option>
+            <option value="checkers" selected>Checkers</option>
           </select>
         </label>
         <label for="difficulty">
@@ -247,7 +247,7 @@
         var gameSelect = document.getElementById('game-select');
         var titleElement = document.getElementById('title');
 
-        var currentGame = 'tictactoe';
+        var currentGame = 'checkers';
         var board = Array(9).fill('');
         var gameOver = false;
         var turn = PLAYER;
@@ -639,6 +639,9 @@
             moves = moves.filter(function (move) { return move.capture !== -1; });
           }
           if (moves.length === 0) {
+            selectedSquare = -1;
+            validCheckersMoves = [];
+            updateCheckersView();
             return;
           }
           selectedSquare = index;
@@ -958,8 +961,8 @@
         difficultySelect.addEventListener('change', resetCurrentGame);
         gameSelect.addEventListener('change', switchGame);
 
-        createTicTacToeBoardButtons();
-        resetTicTacToeGame();
+        gameSelect.value = currentGame;
+        switchGame();
       })();
     </script>
   </body>
