@@ -584,8 +584,6 @@
             statusElement.textContent = 'You win!';
           } else if (checkersWinner === CHECKERS_COMPUTER) {
             statusElement.textContent = 'Computer wins!';
-          } else if (forcedJumpFrom >= 0 && checkersTurn === CHECKERS_PLAYER) {
-            statusElement.textContent = 'You must continue jumping with the selected red piece.';
           } else if (checkersTurn === CHECKERS_PLAYER) {
             statusElement.textContent = 'Your turn (red).';
           } else {
@@ -606,16 +604,6 @@
             if (checkersGameOver) {
               return;
             }
-            if (move.capture !== -1 && !move.promoted) {
-              var moreJumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
-              if (moreJumps.length > 0) {
-                forcedJumpFrom = move.to;
-                selectedSquare = move.to;
-                validCheckersMoves = moreJumps;
-                updateCheckersView();
-                return;
-              }
-            }
             endCheckersPlayerTurn();
             return;
           }
@@ -632,12 +620,7 @@
             return;
           }
 
-          var allMoves = getAllCheckersMoves(checkersBoard, CHECKERS_PLAYER);
-          var mustCapture = allMoves.some(function (move) { return move.capture !== -1; });
           var moves = getCheckersMovesForPiece(checkersBoard, index, false);
-          if (mustCapture) {
-            moves = moves.filter(function (move) { return move.capture !== -1; });
-          }
           if (moves.length === 0) {
             selectedSquare = -1;
             validCheckersMoves = [];
@@ -682,15 +665,6 @@
 
           var move = chooseCheckersMove(moves);
           makeCheckersMove(move);
-
-          while (!checkersGameOver && move.capture !== -1 && !move.promoted) {
-            var jumps = getCheckersMovesForPiece(checkersBoard, move.to, true);
-            if (jumps.length === 0) {
-              break;
-            }
-            move = chooseCheckersMove(jumps);
-            makeCheckersMove(move);
-          }
 
           if (!checkersGameOver) {
             checkersTurn = CHECKERS_PLAYER;
@@ -740,21 +714,16 @@
 
         function getAllCheckersMoves(currentBoard, side) {
           var moves = [];
-          var jumps = [];
           for (var i = 0; i < currentBoard.length; i += 1) {
             var piece = currentBoard[i];
             if (piece && piece.side === side) {
               var pieceMoves = getCheckersMovesForPiece(currentBoard, i, false);
               for (var j = 0; j < pieceMoves.length; j += 1) {
-                if (pieceMoves[j].capture !== -1) {
-                  jumps.push(pieceMoves[j]);
-                } else {
-                  moves.push(pieceMoves[j]);
-                }
+                moves.push(pieceMoves[j]);
               }
             }
           }
-          return jumps.length > 0 ? jumps : moves;
+          return moves;
         }
 
         function getCheckersMovesForPiece(currentBoard, index, capturesOnly) {
