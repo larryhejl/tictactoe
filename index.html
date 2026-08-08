@@ -2291,10 +2291,13 @@
             }
             return Math.random() < 0.5;
           }
-          if (pigTurnTotal < 30) {
-            return true;
+          if (player.id === 'lou') {
+            if (pigTurnTotal < 30) {
+              return true;
+            }
+            return pigTurnTotal < 55 && Math.random() < 0.75;
           }
-          return pigTurnTotal < 55 && Math.random() < 0.75;
+          return pigTurnTotal < 20;
         }
 
         function getPigOpponentLead(index) {
@@ -2350,9 +2353,7 @@
         }
 
         function resetCurrentGame() {
-          if (currentGame !== 'pig') {
-            clearPigTimeout();
-          }
+          clearPigTimeout();
           if (currentGame === 'checkers') {
             resetCheckersGame();
           } else if (currentGame === 'chess') {
