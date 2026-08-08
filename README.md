@@ -4,7 +4,7 @@ A Safari-compatible browser game with selectable Tic-Tac-Toe, Checkers, Chess, H
 
 ## Pig (dice)
 
-Roll the die to build a turn total, or hold to bank it. Rolling a 1 wipes the turn total and passes the die. First to 100 points wins.
+Roll two dice to build a turn total, or hold to bank it. Rolling a 1 on either die wipes the turn total and passes the dice; rolling double 1s also wipes your entire banked score. First to 100 points wins.
 
 You play against three computer players who take their turns one at a time, each with its own risk tolerance:
 

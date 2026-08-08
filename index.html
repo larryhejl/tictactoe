@@ -397,6 +397,11 @@
         gap: 10px;
       }
 
+      .pig-dice-row {
+        display: flex;
+        gap: 14px;
+      }
+
       .pig-die {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -555,7 +560,7 @@
         var sudokuGameOver = false;
 
         var PIG_TARGET_SCORE = 100;
-        var PIG_STEP_DELAY = 1100;
+        var PIG_STEP_DELAY = 1800;
         var PIG_PLAYERS = [
           { id: 'you', name: 'You', style: 'Human player', human: true },
           { id: 'jake', name: 'Jake', style: 'Conservative', human: false },
@@ -573,7 +578,8 @@
         var pigScores = [];
         var pigTurnIndex = 0;
         var pigTurnTotal = 0;
-        var pigLastRoll = 0;
+        var pigDie1 = 0;
+        var pigDie2 = 0;
         var pigGameOver = false;
         var pigWinnerIndex = -1;
         var pigMessage = '';
@@ -2124,14 +2130,19 @@
           var diceArea = document.createElement('div');
           diceArea.className = 'pig-dice-area';
 
-          var die = document.createElement('div');
-          die.className = 'pig-die empty';
-          die.setAttribute('role', 'img');
-          die.setAttribute('aria-label', 'No roll yet');
-          for (var i = 0; i < 9; i += 1) {
-            die.appendChild(document.createElement('span'));
-          }
-          diceArea.appendChild(die);
+          var diceRow = document.createElement('div');
+          diceRow.className = 'pig-dice-row';
+          ['pig-die-1', 'pig-die-2'].forEach(function (dieClass) {
+            var die = document.createElement('div');
+            die.className = 'pig-die ' + dieClass + ' empty';
+            die.setAttribute('role', 'img');
+            die.setAttribute('aria-label', 'No roll yet');
+            for (var i = 0; i < 9; i += 1) {
+              die.appendChild(document.createElement('span'));
+            }
+            diceRow.appendChild(die);
+          });
+          diceArea.appendChild(diceRow);
 
           var turnTotal = document.createElement('p');
           turnTotal.className = 'pig-turn-total';
@@ -2164,7 +2175,8 @@
           pigScores = PIG_PLAYERS.map(function () { return 0; });
           pigTurnIndex = 0;
           pigTurnTotal = 0;
-          pigLastRoll = 0;
+          pigDie1 = 0;
+          pigDie2 = 0;
           pigGameOver = false;
           pigWinnerIndex = -1;
           pigMessage = 'Your turn. Roll to build your turn total, hold to bank it.';
@@ -2197,9 +2209,9 @@
           if (currentGame !== 'pig' || !isPigPlayerTurn()) {
             return;
           }
-          rollPigDie();
+          rollPigDice();
           updatePigView();
-          if (pigLastRoll === 1) {
+          if (pigDie1 === 1 || pigDie2 === 1) {
             schedulePigStep(advancePigTurn);
           }
         }
@@ -2215,16 +2227,24 @@
           }
         }
 
-        function rollPigDie() {
+        function rollPigDice() {
           var player = PIG_PLAYERS[pigTurnIndex];
-          pigLastRoll = Math.floor(Math.random() * 6) + 1;
-          if (pigLastRoll === 1) {
+          pigDie1 = Math.floor(Math.random() * 6) + 1;
+          pigDie2 = Math.floor(Math.random() * 6) + 1;
+          if (pigDie1 === 1 && pigDie2 === 1) {
             pigTurnTotal = 0;
-            pigMessage = player.name + ' rolled a 1 and lost the turn total.';
+            pigScores[pigTurnIndex] = 0;
+            pigMessage = player.name + ' rolled double 1s and lost their entire score!';
             return;
           }
-          pigTurnTotal += pigLastRoll;
-          pigMessage = player.name + ' rolled a ' + pigLastRoll + '.';
+          if (pigDie1 === 1 || pigDie2 === 1) {
+            pigTurnTotal = 0;
+            pigMessage = player.name + ' rolled a ' + pigDie1 + ' and a ' + pigDie2 +
+              ' — a 1 wiped the turn total.';
+            return;
+          }
+          pigTurnTotal += pigDie1 + pigDie2;
+          pigMessage = player.name + ' rolled a ' + pigDie1 + ' and a ' + pigDie2 + '.';
         }
 
         function holdPigTurn() {
@@ -2243,7 +2263,8 @@
         function advancePigTurn() {
           pigTurnIndex = (pigTurnIndex + 1) % PIG_PLAYERS.length;
           pigTurnTotal = 0;
-          pigLastRoll = 0;
+          pigDie1 = 0;
+          pigDie2 = 0;
           pigMessage = PIG_PLAYERS[pigTurnIndex].name + "'s turn.";
           updatePigView();
           if (!PIG_PLAYERS[pigTurnIndex].human) {
@@ -2253,9 +2274,9 @@
 
         function playPigComputerStep() {
           if (shouldPigComputerRoll()) {
-            rollPigDie();
+            rollPigDice();
             updatePigView();
-            if (pigLastRoll === 1) {
+            if (pigDie1 === 1 || pigDie2 === 1) {
               schedulePigStep(advancePigTurn);
             } else {
               schedulePigStep(playPigComputerStep);
@@ -2322,16 +2343,22 @@
             }
           });
 
-          var die = boardElement.querySelector('.pig-die');
-          if (die) {
-            var pips = PIG_PIPS[pigLastRoll] || [];
-            die.classList.toggle('empty', pigLastRoll === 0);
-            die.classList.toggle('rolled-one', pigLastRoll === 1);
-            die.setAttribute('aria-label', pigLastRoll === 0 ? 'No roll yet' : 'Rolled ' + pigLastRoll);
-            Array.prototype.forEach.call(die.children, function (cell, index) {
+          var dice = [
+            { element: boardElement.querySelector('.pig-die-1'), value: pigDie1 },
+            { element: boardElement.querySelector('.pig-die-2'), value: pigDie2 }
+          ];
+          dice.forEach(function (die) {
+            if (!die.element) {
+              return;
+            }
+            var pips = PIG_PIPS[die.value] || [];
+            die.element.classList.toggle('empty', die.value === 0);
+            die.element.classList.toggle('rolled-one', die.value === 1);
+            die.element.setAttribute('aria-label', die.value === 0 ? 'No roll yet' : 'Rolled ' + die.value);
+            Array.prototype.forEach.call(die.element.children, function (cell, index) {
               cell.className = pips.indexOf(index) === -1 ? '' : 'pig-pip';
             });
-          }
+          });
 
           var turnTotalElement = boardElement.querySelector('.pig-turn-total');
           if (turnTotalElement) {
