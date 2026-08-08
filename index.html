@@ -47,6 +47,10 @@
         margin-bottom: 14px;
       }
 
+      .controls label[hidden] {
+        display: none;
+      }
+
       .controls label {
         display: flex;
         align-items: center;
@@ -334,6 +338,111 @@
         background: #ffe4e6;
       }
 
+      .pig-board {
+        display: grid;
+        gap: 16px;
+      }
+
+      .pig-scores {
+        display: grid;
+        gap: 6px;
+      }
+
+      .pig-score {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        border: 1px solid #ced7e0;
+        border-radius: 10px;
+        background: #fdfefe;
+      }
+
+      .pig-score.active {
+        background: #eef5ff;
+        border-color: #1d4ed8;
+      }
+
+      .pig-score.winner {
+        background: #d8f6dc;
+        border-color: #2a7540;
+      }
+
+      .pig-score-name {
+        font-weight: 700;
+      }
+
+      .pig-score-style {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 400;
+        color: #4b5563;
+      }
+
+      .pig-score-points {
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
+      .pig-turn-total {
+        min-height: 1.4rem;
+        font-weight: 600;
+        color: #4b5563;
+      }
+
+      .pig-dice-area {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+      }
+
+      .pig-die {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 4px;
+        width: 84px;
+        height: 84px;
+        padding: 10px;
+        border: 1px solid #ced7e0;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+      }
+
+      .pig-die.rolled-one {
+        border-color: #b91c1c;
+        background: #ffe4e6;
+      }
+
+      .pig-die.empty {
+        background: #f8fafc;
+      }
+
+      .pig-pip {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: #1a1f36;
+      }
+
+      .pig-die.rolled-one .pig-pip {
+        background: #b91c1c;
+      }
+
+      .pig-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .pig-actions button {
+        flex: 1 1 120px;
+        min-height: 44px;
+        font-weight: 700;
+      }
+
       @media (max-width: 480px) {
         .game {
           padding: 16px;
@@ -354,9 +463,10 @@
             <option value="chess">Chess</option>
             <option value="hangman">Hangman</option>
             <option value="sudoku">Sudoku</option>
+            <option value="pig">Pig (Dice)</option>
           </select>
         </label>
-        <label for="difficulty">
+        <label for="difficulty" id="difficulty-label">
           Difficulty
           <select id="difficulty" aria-label="Select difficulty">
             <option value="easy">Easy</option>
@@ -401,6 +511,7 @@
         var difficultySelect = document.getElementById('difficulty');
         var gameSelect = document.getElementById('game-select');
         var titleElement = document.getElementById('title');
+        var difficultyLabel = document.getElementById('difficulty-label');
 
         var currentGame = 'checkers';
         var board = Array(9).fill('');
@@ -442,6 +553,31 @@
         var sudokuBoard = [];
         var sudokuGivenMask = [];
         var sudokuGameOver = false;
+
+        var PIG_TARGET_SCORE = 100;
+        var PIG_STEP_DELAY = 1100;
+        var PIG_PLAYERS = [
+          { id: 'you', name: 'You', style: 'Human player', human: true },
+          { id: 'jake', name: 'Jake', style: 'Conservative', human: false },
+          { id: 'jack', name: 'Jack', style: 'Fifty-fifty', human: false },
+          { id: 'lou', name: 'Lou', style: 'Absolutely crazy', human: false }
+        ];
+        var PIG_PIPS = {
+          1: [4],
+          2: [0, 8],
+          3: [0, 4, 8],
+          4: [0, 2, 6, 8],
+          5: [0, 2, 4, 6, 8],
+          6: [0, 2, 3, 5, 6, 8]
+        };
+        var pigScores = [];
+        var pigTurnIndex = 0;
+        var pigTurnTotal = 0;
+        var pigLastRoll = 0;
+        var pigGameOver = false;
+        var pigWinnerIndex = -1;
+        var pigMessage = '';
+        var pigTimeoutId = 0;
 
         function createTicTacToeBoardButtons() {
           boardElement.innerHTML = '';
@@ -1954,7 +2090,269 @@
           }
         }
 
+        function createPigBoard() {
+          boardElement.innerHTML = '';
+          boardElement.className = 'board pig-board';
+          boardElement.setAttribute('role', 'group');
+          boardElement.setAttribute('aria-label', 'Pig dice game');
+
+          var scores = document.createElement('div');
+          scores.className = 'pig-scores';
+          PIG_PLAYERS.forEach(function (player, index) {
+            var row = document.createElement('div');
+            row.className = 'pig-score';
+            row.dataset.index = String(index);
+
+            var name = document.createElement('span');
+            name.className = 'pig-score-name';
+            name.textContent = player.name;
+            var style = document.createElement('span');
+            style.className = 'pig-score-style';
+            style.textContent = player.style;
+            name.appendChild(style);
+
+            var points = document.createElement('span');
+            points.className = 'pig-score-points';
+            points.textContent = '0';
+
+            row.appendChild(name);
+            row.appendChild(points);
+            scores.appendChild(row);
+          });
+          boardElement.appendChild(scores);
+
+          var diceArea = document.createElement('div');
+          diceArea.className = 'pig-dice-area';
+
+          var die = document.createElement('div');
+          die.className = 'pig-die empty';
+          die.setAttribute('role', 'img');
+          die.setAttribute('aria-label', 'No roll yet');
+          for (var i = 0; i < 9; i += 1) {
+            die.appendChild(document.createElement('span'));
+          }
+          diceArea.appendChild(die);
+
+          var turnTotal = document.createElement('p');
+          turnTotal.className = 'pig-turn-total';
+          turnTotal.setAttribute('aria-live', 'polite');
+          diceArea.appendChild(turnTotal);
+          boardElement.appendChild(diceArea);
+
+          var actions = document.createElement('div');
+          actions.className = 'pig-actions';
+
+          var rollButton = document.createElement('button');
+          rollButton.type = 'button';
+          rollButton.className = 'pig-roll';
+          rollButton.textContent = 'Roll';
+          rollButton.addEventListener('click', onPigRollClick);
+          actions.appendChild(rollButton);
+
+          var holdButton = document.createElement('button');
+          holdButton.type = 'button';
+          holdButton.className = 'pig-hold';
+          holdButton.textContent = 'Hold';
+          holdButton.addEventListener('click', onPigHoldClick);
+          actions.appendChild(holdButton);
+
+          boardElement.appendChild(actions);
+        }
+
+        function resetPigGame() {
+          clearPigTimeout();
+          pigScores = PIG_PLAYERS.map(function () { return 0; });
+          pigTurnIndex = 0;
+          pigTurnTotal = 0;
+          pigLastRoll = 0;
+          pigGameOver = false;
+          pigWinnerIndex = -1;
+          pigMessage = 'Your turn. Roll to build your turn total, hold to bank it.';
+          updatePigView();
+        }
+
+        function clearPigTimeout() {
+          if (pigTimeoutId) {
+            window.clearTimeout(pigTimeoutId);
+            pigTimeoutId = 0;
+          }
+        }
+
+        function schedulePigStep(step) {
+          clearPigTimeout();
+          pigTimeoutId = window.setTimeout(function () {
+            pigTimeoutId = 0;
+            if (currentGame !== 'pig' || pigGameOver) {
+              return;
+            }
+            step();
+          }, PIG_STEP_DELAY);
+        }
+
+        function isPigPlayerTurn() {
+          return !pigGameOver && PIG_PLAYERS[pigTurnIndex].human;
+        }
+
+        function onPigRollClick() {
+          if (currentGame !== 'pig' || !isPigPlayerTurn()) {
+            return;
+          }
+          rollPigDie();
+          updatePigView();
+          if (pigLastRoll === 1) {
+            schedulePigStep(advancePigTurn);
+          }
+        }
+
+        function onPigHoldClick() {
+          if (currentGame !== 'pig' || !isPigPlayerTurn() || pigTurnTotal === 0) {
+            return;
+          }
+          holdPigTurn();
+          updatePigView();
+          if (!pigGameOver) {
+            schedulePigStep(advancePigTurn);
+          }
+        }
+
+        function rollPigDie() {
+          var player = PIG_PLAYERS[pigTurnIndex];
+          pigLastRoll = Math.floor(Math.random() * 6) + 1;
+          if (pigLastRoll === 1) {
+            pigTurnTotal = 0;
+            pigMessage = player.name + ' rolled a 1 and lost the turn total.';
+            return;
+          }
+          pigTurnTotal += pigLastRoll;
+          pigMessage = player.name + ' rolled a ' + pigLastRoll + '.';
+        }
+
+        function holdPigTurn() {
+          var player = PIG_PLAYERS[pigTurnIndex];
+          pigScores[pigTurnIndex] += pigTurnTotal;
+          pigMessage = player.name + ' held and banked ' + pigTurnTotal + ' point' +
+            (pigTurnTotal === 1 ? '' : 's') + ' for a total of ' + pigScores[pigTurnIndex] + '.';
+          pigTurnTotal = 0;
+          if (pigScores[pigTurnIndex] >= PIG_TARGET_SCORE) {
+            pigGameOver = true;
+            pigWinnerIndex = pigTurnIndex;
+            pigMessage = player.name + ' reached ' + pigScores[pigTurnIndex] + ' and won the game!';
+          }
+        }
+
+        function advancePigTurn() {
+          pigTurnIndex = (pigTurnIndex + 1) % PIG_PLAYERS.length;
+          pigTurnTotal = 0;
+          pigLastRoll = 0;
+          pigMessage = PIG_PLAYERS[pigTurnIndex].name + "'s turn.";
+          updatePigView();
+          if (!PIG_PLAYERS[pigTurnIndex].human) {
+            schedulePigStep(playPigComputerStep);
+          }
+        }
+
+        function playPigComputerStep() {
+          if (shouldPigComputerRoll()) {
+            rollPigDie();
+            updatePigView();
+            if (pigLastRoll === 1) {
+              schedulePigStep(advancePigTurn);
+            } else {
+              schedulePigStep(playPigComputerStep);
+            }
+            return;
+          }
+          holdPigTurn();
+          updatePigView();
+          if (!pigGameOver) {
+            schedulePigStep(advancePigTurn);
+          }
+        }
+
+        function shouldPigComputerRoll() {
+          var player = PIG_PLAYERS[pigTurnIndex];
+          var score = pigScores[pigTurnIndex];
+          if (pigTurnTotal === 0) {
+            return true;
+          }
+          if (score + pigTurnTotal >= PIG_TARGET_SCORE) {
+            return false;
+          }
+          if (player.id === 'jake') {
+            var jakeTarget = getPigOpponentLead(pigTurnIndex) >= 25 ? 22 : 15;
+            return pigTurnTotal < jakeTarget;
+          }
+          if (player.id === 'jack') {
+            if (pigTurnTotal < 12) {
+              return true;
+            }
+            if (pigTurnTotal >= 30) {
+              return false;
+            }
+            return Math.random() < 0.5;
+          }
+          if (pigTurnTotal < 30) {
+            return true;
+          }
+          return pigTurnTotal < 55 && Math.random() < 0.75;
+        }
+
+        function getPigOpponentLead(index) {
+          var best = 0;
+          pigScores.forEach(function (score, scoreIndex) {
+            if (scoreIndex !== index && score > best) {
+              best = score;
+            }
+          });
+          return best - pigScores[index];
+        }
+
+        function updatePigView() {
+          var rows = boardElement.querySelectorAll('.pig-score');
+          rows.forEach(function (row, index) {
+            var isActive = !pigGameOver && index === pigTurnIndex;
+            row.classList.toggle('active', isActive);
+            row.classList.toggle('winner', index === pigWinnerIndex);
+            var points = row.querySelector('.pig-score-points');
+            if (points) {
+              points.textContent = String(pigScores[index]);
+            }
+          });
+
+          var die = boardElement.querySelector('.pig-die');
+          if (die) {
+            var pips = PIG_PIPS[pigLastRoll] || [];
+            die.classList.toggle('empty', pigLastRoll === 0);
+            die.classList.toggle('rolled-one', pigLastRoll === 1);
+            die.setAttribute('aria-label', pigLastRoll === 0 ? 'No roll yet' : 'Rolled ' + pigLastRoll);
+            Array.prototype.forEach.call(die.children, function (cell, index) {
+              cell.className = pips.indexOf(index) === -1 ? '' : 'pig-pip';
+            });
+          }
+
+          var turnTotalElement = boardElement.querySelector('.pig-turn-total');
+          if (turnTotalElement) {
+            turnTotalElement.textContent = pigGameOver
+              ? 'Game over. Press Reset Game to play again.'
+              : PIG_PLAYERS[pigTurnIndex].name + ' — turn total: ' + pigTurnTotal;
+          }
+
+          var rollButton = boardElement.querySelector('.pig-roll');
+          var holdButton = boardElement.querySelector('.pig-hold');
+          if (rollButton) {
+            rollButton.disabled = !isPigPlayerTurn();
+          }
+          if (holdButton) {
+            holdButton.disabled = !isPigPlayerTurn() || pigTurnTotal === 0;
+          }
+
+          statusElement.textContent = pigMessage;
+        }
+
         function resetCurrentGame() {
+          if (currentGame !== 'pig') {
+            clearPigTimeout();
+          }
           if (currentGame === 'checkers') {
             resetCheckersGame();
           } else if (currentGame === 'chess') {
@@ -1963,6 +2361,8 @@
             resetHangmanGame();
           } else if (currentGame === 'sudoku') {
             resetSudokuGame();
+          } else if (currentGame === 'pig') {
+            resetPigGame();
           } else {
             resetTicTacToeGame();
           }
@@ -1982,10 +2382,14 @@
           } else if (currentGame === 'sudoku') {
             titleElement.textContent = 'Sudoku';
             createSudokuBoardButtons();
+          } else if (currentGame === 'pig') {
+            titleElement.textContent = 'Pig';
+            createPigBoard();
           } else {
             titleElement.textContent = 'Tic-Tac-Toe';
             createTicTacToeBoardButtons();
           }
+          difficultyLabel.hidden = currentGame === 'pig';
           resetCurrentGame();
         }
 
