@@ -2239,7 +2239,8 @@
           }
           if (pigDie1 === 1 || pigDie2 === 1) {
             pigTurnTotal = 0;
-            pigMessage = player.name + ' rolled a 1 and lost the turn total.';
+            pigMessage = player.name + ' rolled a ' + pigDie1 + ' and a ' + pigDie2 +
+              ' — a 1 wiped the turn total.';
             return;
           }
           pigTurnTotal += pigDie1 + pigDie2;
